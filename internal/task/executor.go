@@ -378,8 +378,6 @@ func (q *Queue) addLog(taskID, level, msg string) {
 	entry := LogEntry{Time: time.Now().Format("15:04:05"), Message: msg, Level: level}
 	q.logs[taskID] = append(q.logs[taskID], entry)
 	line := entry.Time + " [" + level + "] " + msg + "\n"
-	os.MkdirAll(q.cacheDir, 0755)
-	os.WriteFile(q.logPath(taskID), []byte(line), 0644) // append via O_APPEND is unreliable for concurrent, use appendFile helper
 	q.mu.Unlock()
 	q.appendToLogFile(taskID, line)
 	q.emit("task:log", map[string]interface{}{"taskID": taskID, "entry": entry})
