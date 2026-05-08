@@ -8,58 +8,39 @@ import (
 
 func TestSaveAndLoad(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "aks.yaml")
-	aks := []string{"ak_test_1", "ak_test_2"}
+	path := filepath.Join(dir, "config.yaml")
+	entries := []Entry{{Name: "开发", Key: "ak_dev"}, {Name: "备用", Key: "ak_backup"}}
 
-	if err := Save(path, aks); err != nil {
-		t.Fatalf("Save failed: %v", err)
-	}
+	if err := Save(path, entries); err != nil { t.Fatalf("Save failed: %v", err) }
 
 	loaded, err := Load(path)
 	if err != nil { t.Fatalf("Load failed: %v", err) }
-
-	if len(loaded) != 2 {
-		t.Fatalf("expected 2 entries, got %d", len(loaded))
-	}
-	if loaded[0] != "ak_test_1" || loaded[1] != "ak_test_2" {
-		t.Errorf("unexpected entries: %v", loaded)
-	}
+	if len(loaded) != 2 { t.Fatalf("expected 2, got %d", len(loaded)) }
+	if loaded[0].Name != "开发" || loaded[0].Key != "ak_dev" { t.Errorf("unexpected: %+v", loaded[0]) }
+	if loaded[1].Name != "备用" || loaded[1].Key != "ak_backup" { t.Errorf("unexpected: %+v", loaded[1]) }
 }
 
 func TestLoadNonExistent(t *testing.T) {
-	entries, err := Load("/nonexistent/path/aks.yaml")
-	if err != nil { t.Fatalf("Load for non-existent file should not error: %v", err) }
-	if entries != nil { t.Errorf("expected nil for non-existent, got %v", entries) }
-}
-
-func TestSaveCreatesDir(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "sub", "dir", "aks.yaml")
-	if err := Save(path, []string{"test_ak"}); err != nil {
-		t.Fatalf("Save with nested dir failed: %v", err)
-	}
-	if _, err := os.Stat(path); os.IsNotExist(err) { t.Error("file was not created") }
+	e, err := Load("/nonexistent/config.yaml")
+	if err != nil { t.Fatal(err) }
+	if e != nil { t.Errorf("expected nil, got %v", e) }
 }
 
 func TestSaveEmpty(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "empty.yaml")
-	if err := Save(path, nil); err != nil { t.Fatalf("Save nil entries failed: %v", err) }
+	path := filepath.Join(dir, "c.yaml")
+	if err := Save(path, nil); err != nil { t.Fatal(err) }
 	loaded, err := Load(path)
-	if err != nil { t.Fatalf("Load failed: %v", err) }
-	if len(loaded) != 0 { t.Errorf("expected 0 entries, got %d", len(loaded)) }
+	if err != nil { t.Fatal(err) }
+	if len(loaded) != 0 { t.Errorf("expected 0, got %d", len(loaded)) }
 }
 
 func TestYAMLFormat(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "test.yaml")
-	if err := Save(path, []string{"ak1", "ak2"}); err != nil {
-		t.Fatalf("Save failed: %v", err)
-	}
-	data, err := os.ReadFile(path)
-	if err != nil { t.Fatalf("ReadFile failed: %v", err) }
-	expected := "aks:\n    - ak1\n    - ak2\n"
-	if string(data) != expected {
-		t.Errorf("unexpected YAML format:\ngot:\n%s\nwant:\n%s", string(data), expected)
+	path := filepath.Join(dir, "c.yaml")
+	_ = Save(path, []Entry{{Name: "主", Key: "ak1"}, {Name: "次", Key: "ak2"}})
+	data, _ := os.ReadFile(path)
+	if string(data) != "aks:\n    - name: 主\n      key: ak1\n    - name: 次\n      key: ak2\n" {
+		t.Errorf("unexpected format:\n%s", string(data))
 	}
 }

@@ -7,11 +7,16 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type config struct {
-	AKs []string `yaml:"aks"`
+type Entry struct {
+	Name string `yaml:"name"`
+	Key  string `yaml:"key"`
 }
 
-func Load(path string) ([]string, error) {
+type config struct {
+	AKs []Entry `yaml:"aks"`
+}
+
+func Load(path string) ([]Entry, error) {
 	abs, err := filepath.Abs(path)
 	if err != nil { return nil, err }
 	data, err := os.ReadFile(abs)
@@ -24,12 +29,12 @@ func Load(path string) ([]string, error) {
 	return cfg.AKs, nil
 }
 
-func Save(path string, aks []string) error {
+func Save(path string, entries []Entry) error {
 	abs, err := filepath.Abs(path)
 	if err != nil { return err }
 	dir := filepath.Dir(abs)
 	if err := os.MkdirAll(dir, 0755); err != nil { return err }
-	cfg := config{AKs: aks}
+	cfg := config{AKs: entries}
 	data, err := yaml.Marshal(&cfg)
 	if err != nil { return err }
 	return os.WriteFile(abs, data, 0644)

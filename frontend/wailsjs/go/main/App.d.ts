@@ -3,7 +3,7 @@
 import {main} from '../models';
 import {task} from '../models';
 
-export function AddAK(arg1:string):Promise<string>;
+export function AddAK(arg1:string,arg2:string):Promise<string>;
 
 export function CancelTask(arg1:string):Promise<boolean>;
 

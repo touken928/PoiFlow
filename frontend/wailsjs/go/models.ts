@@ -1,6 +1,7 @@
 export namespace main {
 	
 	export class AKInfo {
+	    name: string;
 	    ak: string;
 	    used: number;
 	    failed: boolean;
@@ -12,6 +13,7 @@ export namespace main {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
 	        this.ak = source["ak"];
 	        this.used = source["used"];
 	        this.failed = source["failed"];

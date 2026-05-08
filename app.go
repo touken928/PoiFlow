@@ -35,10 +35,12 @@ func (a *App) startup(ctx context.Context) { a.ctx = ctx }
 func (a *App) reloadAKs() {
 	entries, err := akstore.Load(akFileName)
 	if err != nil { println("load aks failed:", err.Error()) }
+	keys := make([]string, len(entries))
+	for i, e := range entries { keys[i] = e.Key }
 	if a.akPool == nil {
-		a.akPool = akpool.New(entries, nil)
+		a.akPool = akpool.New(keys, nil)
 	} else {
-		a.akPool.Rebuild(entries, nil)
+		a.akPool.Rebuild(keys, nil)
 	}
 }
 
@@ -95,44 +97,49 @@ func (a *App) ExpandCount(areaGran, queryGran int, targets []TaskTargetInput) in
 }
 
 type AKInfo struct {
-	AK     string `json:"ak"`
-	Used   int    `json:"used"`
-	Failed bool   `json:"failed"`
+	Name    string `json:"name"`
+	AK      string `json:"ak"`
+	Used    int    `json:"used"`
+	Failed  bool   `json:"failed"`
 	FailMsg string `json:"failMsg"`
 }
 
 func (a *App) GetAKItems() []AKInfo {
 	items := a.akPool.Items()
+	entries, _ := akstore.Load(akFileName)
+	nameMap := make(map[string]string, len(entries))
+	for _, e := range entries { nameMap[e.Key] = e.Name }
+
 	out := make([]AKInfo, len(items))
 	for i, it := range items {
-		out[i] = AKInfo{AK: it.AK, Used: it.Used, Failed: it.Failed, FailMsg: it.FailMsg}
+		out[i] = AKInfo{Name: nameMap[it.AK], AK: it.AK, Used: it.Used, Failed: it.Failed, FailMsg: it.FailMsg}
 	}
 	return out
 }
 
 func (a *App) ResetAKPool()   { a.akPool.ResetAll() }
 
-func (a *App) AddAK(ak string) string {
-	if ak == "" { return "AK不能为空" }
-	aks, err := akstore.Load(akFileName)
+func (a *App) AddAK(name, key string) string {
+	if key == "" { return "AK不能为空" }
+	entries, err := akstore.Load(akFileName)
 	if err != nil { return "读取配置失败: " + err.Error() }
-	for _, e := range aks {
-		if e == ak { return "AK已存在" }
+	for _, e := range entries {
+		if e.Key == key { return "AK已存在" }
 	}
-	aks = append(aks, ak)
-	if err := akstore.Save(akFileName, aks); err != nil { return "保存失败: " + err.Error() }
+	entries = append(entries, akstore.Entry{Name: name, Key: key})
+	if err := akstore.Save(akFileName, entries); err != nil { return "保存失败: " + err.Error() }
 	a.reloadAKs()
 	return ""
 }
 
-func (a *App) RemoveAK(ak string) string {
-	aks, err := akstore.Load(akFileName)
+func (a *App) RemoveAK(key string) string {
+	entries, err := akstore.Load(akFileName)
 	if err != nil { return "读取配置失败: " + err.Error() }
-	filtered := make([]string, 0, len(aks))
-	for _, e := range aks {
-		if e != ak { filtered = append(filtered, e) }
+	filtered := make([]akstore.Entry, 0, len(entries))
+	for _, e := range entries {
+		if e.Key != key { filtered = append(filtered, e) }
 	}
-	if len(filtered) == len(aks) { return "AK不存在" }
+	if len(filtered) == len(entries) { return "AK不存在" }
 	if err := akstore.Save(akFileName, filtered); err != nil { return "保存失败: " + err.Error() }
 	a.reloadAKs()
 	return ""

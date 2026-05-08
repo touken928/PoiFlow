@@ -2,7 +2,7 @@ import {useState, useEffect, useCallback, useRef} from 'react';
 import {
     Button, Text, Input, Dialog, DialogTrigger, DialogSurface,
     DialogTitle, DialogBody, DialogActions, DialogContent, Dropdown, Option,
-    Badge, tokens, FluentProvider, webLightTheme, ProgressBar, ToolbarButton,
+    Badge, tokens, FluentProvider, webLightTheme, ProgressBar, ToolbarButton, TabList, Tab,
 } from '@fluentui/react-components';
 import {
     Settings24Regular, Add24Regular, Play24Regular, Pause24Regular,
@@ -29,7 +29,7 @@ interface Task {
     createdAt: string; updatedAt: string;
 }
 interface LogEntry{time:string;message:string;level:string}
-interface AKItem{ak:string;used:number;failed:boolean;failMsg:string}
+interface AKItem{name:string;ak:string;used:number;failed:boolean;failMsg:string}
 
 const st = (styles: Record<string,any>) => styles;
 
@@ -74,8 +74,10 @@ function App(){
     const [nCity,setNCity]=useState('');
     const [nTargets,setNTargets]=useState<{province:string;city:string;name:string}[]>([]);
     const [expandCount,setExpandCount]=useState(0);
-    const [newAk,setNewAk]=useState('');
+    const [newAkName,setNewAkName]=useState('');
+    const [newAkKey,setNewAkKey]=useState('');
     const [verifying,setVerifying]=useState('');
+    const [settingsTab,setSettingsTab]=useState('ak');
 
     const loadAll=useCallback(()=>{GetTasks().then(setTasks).catch(()=>{});GetAKItems().then(setAkItems).catch(()=>{});},[]);
 
@@ -106,7 +108,7 @@ function App(){
     const handleResume=async(id:string)=>{await ResumeTask(id);loadAll();};
     const handleCancel=async(id:string)=>{await CancelTask(id);loadAll();};
     const handleDelete=async(id:string)=>{await DeleteTask(id);loadAll();if(sel?.id===id){setSel(null);setLogs([]);}};
-    const handleAddAk=async()=>{if(!newAk){setMsg('请输入AK');return;}const r=await AddAK(newAk);if(r)setMsg(r);else{setNewAk('');setMsg('AK已添加');}GetAKItems().then(setAkItems).catch(()=>{});};
+    const handleAddAk=async()=>{if(!newAkKey){setMsg('请输入AK');return;}const r=await AddAK(newAkName,newAkKey);if(r)setMsg(r);else{setNewAkName('');setNewAkKey('');setMsg('AK已添加');}GetAKItems().then(setAkItems).catch(()=>{});};
     const handleRemoveAk=async(ak:string)=>{const r=await RemoveAK(ak);if(r)setMsg(r);GetAKItems().then(setAkItems).catch(()=>{});};
     const handleVerifyAk=async(ak:string)=>{setVerifying(ak);const r=await VerifyAK(ak);if(r)setMsg(ak.slice(0,8)+'... '+r);else setMsg(ak.slice(0,8)+'... 正常');setVerifying('');GetAKItems().then(setAkItems).catch(()=>{});};
     const handleVerifyAll=async()=>{for(const it of akItems){setVerifying(it.ak);const r=await VerifyAK(it.ak);if(r)setMsg(it.ak.slice(0,8)+'... '+r);};setVerifying('');GetAKItems().then(setAkItems).catch(()=>{});};
@@ -234,27 +236,49 @@ function App(){
             </Dialog>
 
             <Dialog open={openAk} onOpenChange={(_e,d)=>setOpenAk(d.open)}>
-                <DialogSurface>
+                <DialogSurface style={{minWidth:'600px'}}>
                     <DialogBody>
-                        <DialogTitle>AK 管理</DialogTitle>
+                        <DialogTitle>Settings</DialogTitle>
                         <DialogContent>
-                            <div style={{display:'flex',gap:'8px',marginBottom:'12px'}}>
-                                <Input placeholder="输入新AK" value={newAk} onChange={(_e,d)=>setNewAk(d.value)} style={{flex:1}}/>
-                                <Button appearance="primary" onClick={handleAddAk}>添加</Button>
-                            </div>
-                            <div style={{marginBottom:'12px',display:'flex',gap:'8px'}}>
-                                <Button onClick={handleVerifyAll} disabled={!!verifying}>{verifying?'验证中...':'一键刷新所有AK状态'}</Button>
-                                <Button onClick={()=>{ResetAKPool();GetAKItems().then(setAkItems).catch(()=>{});}}>重置计数</Button>
-                            </div>
-                            {akItems.map((it,i)=>(
-                                <div key={i} style={{display:'flex',alignItems:'center',gap:'12px',padding:'8px 0',borderBottom:`1px solid ${tokens.colorNeutralStroke2}`}}>
-                                    <Text size={200} style={{fontFamily:'monospace',flex:1}}>{it.ak.slice(0,16)}...</Text>
-                                    <Text size={200}>本次: {it.used}</Text>
-                                    <Badge appearance="filled" color={it.failed?'danger':'success'} size="small">{it.failed?'失效':'正常'}</Badge>
-                                    <Button size="small" onClick={()=>handleVerifyAk(it.ak)} disabled={!!verifying}>验证</Button>
-                                    <Button size="small" onClick={()=>handleRemoveAk(it.ak)}>删除</Button>
+                            <TabList selectedValue={settingsTab} onTabSelect={(_e,d)=>setSettingsTab(d.value as string)} style={{marginBottom:'16px'}}>
+                                <Tab value="ak">API Keys</Tab>
+                                <Tab value="about">关于</Tab>
+                            </TabList>
+                            {settingsTab==='ak'&&<>
+                                <div style={{display:'flex',gap:'8px',marginBottom:'12px'}}>
+                                    <Input placeholder="名称" value={newAkName} onChange={(_e,d)=>setNewAkName(d.value)} style={{width:'140px'}}/>
+                                    <Input placeholder="API Key" value={newAkKey} onChange={(_e,d)=>setNewAkKey(d.value)} style={{flex:1}}/>
+                                    <Button appearance="primary" onClick={handleAddAk}>添加</Button>
                                 </div>
-                            ))}
+                                <div style={{marginBottom:'12px',display:'flex',gap:'8px'}}>
+                                    <Button onClick={handleVerifyAll} disabled={!!verifying}>{verifying?'验证中...':'一键刷新所有AK状态'}</Button>
+                                    <Button onClick={()=>{ResetAKPool();GetAKItems().then(setAkItems).catch(()=>{});}}>重置计数</Button>
+                                </div>
+                                {akItems.map((it,i)=>(
+                                    <div key={i} style={{display:'flex',alignItems:'center',gap:'12px',padding:'8px 0',borderBottom:`1px solid ${tokens.colorNeutralStroke2}`}}>
+                                        <Text size={200} style={{width:'100px',fontWeight:'600'}}>{it.name||'未命名'}</Text>
+                                        <Text size={200} style={{fontFamily:'monospace',flex:1,color:tokens.colorNeutralForeground3}}>{it.ak.slice(0,16)}...</Text>
+                                        <Text size={200}>本次: {it.used}</Text>
+                                        <Badge appearance="filled" color={it.failed?'danger':'success'} size="small">{it.failed?'失效':'正常'}</Badge>
+                                        <Button size="small" onClick={()=>handleVerifyAk(it.ak)} disabled={!!verifying}>验证</Button>
+                                        <Button size="small" onClick={()=>handleRemoveAk(it.ak)}>删除</Button>
+                                    </div>
+                                ))}
+                            </>}
+                            {settingsTab==='about'&&<div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
+                                <Text weight="semibold" size={400}>PoiFlow</Text>
+                                <Text size={200}>百度POI数据采集桌面工具</Text>
+                                <div style={{height:'1px',background:tokens.colorNeutralStroke2,margin:'4px 0'}}/>
+                                <Text weight="semibold">作者</Text>
+                                <Text size={200}>touken928</Text>
+                                <Text weight="semibold">仓库地址</Text>
+                                <Text size={200}><a href="https://github.com/touken928/PoiFlow" target="_blank" style={{color:tokens.colorBrandForeground1}}>github.com/touken928/PoiFlow</a></Text>
+                                <Text weight="semibold">开源依赖</Text>
+                                <Text size={200}>Go: Wails v2, yaml.v3 | 前端: React, Fluent UI, Vite</Text>
+                                <div style={{height:'1px',background:tokens.colorNeutralStroke2,margin:'4px 0'}}/>
+                                <Text weight="semibold">免责声明</Text>
+                                <Text size={200} style={{color:tokens.colorNeutralForeground3}}>本软件仅供学习研究使用。用户必须遵守百度地图API服务协议及相关法律法规，不得用于任何非法用途。使用者需自行承担全部法律责任。</Text>
+                            </div>}
                         </DialogContent>
                         <DialogActions>
                             <DialogTrigger disableButtonEnhancement><Button>关闭</Button></DialogTrigger>
