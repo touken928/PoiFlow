@@ -136,7 +136,10 @@ function App(){
                     {sel.status===1&&<ToolbarButton icon={<Pause24Regular/>} onClick={()=>handlePause(sel.id)}>暂停</ToolbarButton>}
                     {sel.status===2&&<ToolbarButton icon={<Play24Regular/>} onClick={()=>handleResume(sel.id)}>继续</ToolbarButton>}
                     {sel.status===0&&<ToolbarButton icon={<Delete24Regular/>} onClick={()=>handleCancel(sel.id)}>取消</ToolbarButton>}
-                    {(sel.status===3||sel.status===4)&&<><ToolbarButton icon={<ArrowDownload24Regular/>} onClick={()=>handleExport(sel.id)}>CSV</ToolbarButton><ToolbarButton icon={<ArrowDownload24Regular/>} onClick={()=>handleExportGeoJSON(sel.id)}>GeoJSON</ToolbarButton></>}
+                    {(sel.status===1||sel.status===2)&&<ToolbarButton icon={<Delete24Regular/>} onClick={()=>handleDelete(sel.id)}>删除</ToolbarButton>}
+                    {sel.status===0&&<ToolbarButton icon={<Delete24Regular/>} onClick={()=>handleCancel(sel.id)}>取消</ToolbarButton>}
+                    {(sel.status===3||sel.status===4)&&<><ToolbarButton icon={<ArrowDownload24Regular/>} onClick={()=>handleExport(sel.id)}>CSV</ToolbarButton><ToolbarButton icon={<ArrowDownload24Regular/>} onClick={()=>handleExportGeoJSON(sel.id)}>GeoJSON</ToolbarButton><ToolbarButton icon={<Delete24Regular/>} onClick={()=>handleDelete(sel.id)}>删除</ToolbarButton></>}
+                    {sel.status===5&&<ToolbarButton icon={<Delete24Regular/>} onClick={()=>handleDelete(sel.id)}>删除</ToolbarButton>}
                     {(sel.status===3||sel.status===4||sel.status===5)&&<ToolbarButton icon={<Delete24Regular/>} onClick={()=>handleDelete(sel.id)}>删除</ToolbarButton>}
                 </div>
             </div>

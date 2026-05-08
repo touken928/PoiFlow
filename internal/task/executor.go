@@ -198,10 +198,10 @@ func (q *Queue) Delete(id string) bool {
 	defer q.mu.Unlock()
 	for i, t := range q.tasks {
 		if t.ID == id {
-			if t.Status == StatusRunning || t.Status == StatusPaused { return false }
 			q.tasks = append(q.tasks[:i], q.tasks[i+1:]...)
 			delete(q.records, id); delete(q.logs, id)
 			os.Remove(q.cachePath(id))
+			os.Remove(q.logPath(id))
 			q.emit("task:deleted", id); q.saveStateUnsafe(); return true
 		}
 	}
