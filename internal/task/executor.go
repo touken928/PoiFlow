@@ -285,7 +285,6 @@ func (q *Queue) execute(t *Task) {
 
 	targetRegion := func(t Target) string {
 		if t.City != "" { return t.City + t.Name }
-		if t.Province != "" && t.Province != t.Name { return t.Province + t.Name }
 		return t.Name
 	}
 
