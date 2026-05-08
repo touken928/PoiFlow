@@ -3,7 +3,5 @@ build/bin
 node_modules
 frontend/dist/*
 !frontend/dist/.gitkeep
-.env
-!.env.example
 .DS_Store
 *.md5
