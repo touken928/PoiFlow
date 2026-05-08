@@ -63,7 +63,6 @@ function App(){
     const [openNew,setOpenNew]=useState(false);
     const [openAk,setOpenAk]=useState(false);
     const [nName,setNName]=useState('');
-    const [nExport,setNExport]=useState('');
     const [nQueries,setNQueries]=useState([{query:'',type:''}]);
     const [nAreaGran,setNAreaGran]=useState(0);
     const [nQueryGran,setNQueryGran]=useState(0);
@@ -98,7 +97,7 @@ function App(){
     const handleCreate = async () => {
         const valid = nQueries.filter(q => q.query.trim());
         if(!nName||valid.length===0||nTargets.length===0){setMsg('请填写任务名称、搜索词并选择目标');return;}
-        try{await CreateTask(nName,nExport,nAreaGran,nQueryGran,nTargets,valid);setOpenNew(false);setMsg('');setNName('');setNExport('');setNQueries([{query:'',type:''}]);
+        try{await CreateTask(nName,'',nAreaGran,nQueryGran,nTargets,valid);setOpenNew(false);setMsg('');setNName('');setNQueries([{query:'',type:''}]);
         setNTargets([]);setNProv('');setNCity('');setExpandCount(0);}
         catch(e:any){setMsg('创建失败: '+e);}
     };
@@ -195,8 +194,6 @@ function App(){
                                     </div>
                                 ))}
                                 <Button appearance="subtle" size="small" onClick={()=>setNQueries([...nQueries,{query:'',type:''}])}>+ 添加搜索词</Button>
-
-                                <Input placeholder="CSV导出路径（可选，支持续采）" value={nExport} onChange={(_e,d)=>setNExport(d.value)}/>
 
                                 <Text weight="semibold" size={200} style={{color:tokens.colorNeutralForeground2,letterSpacing:'0.5px',marginTop:'4px'}}>── 目标范围 ──</Text>
                                 <Dropdown placeholder="选择目标级别" value={GRAN[nAreaGran]} onOptionSelect={(_e,d)=>{const v=Number(d.optionValue)||0;setNAreaGran(v);if(v>nQueryGran)setNQueryGran(v);setNTargets([]);setNProv('');setNCity('');}}>

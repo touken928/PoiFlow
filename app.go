@@ -18,11 +18,10 @@ import (
 
 const akFileName = "config.yaml"
 
-func configPath() string {
-	home, err := os.UserHomeDir()
-	if err != nil { return akFileName }
-	return filepath.Join(home, ".poiflow", akFileName)
-}
+func poiflowDir() string   { home, _ := os.UserHomeDir(); return filepath.Join(home, ".poiflow") }
+func cacheDir() string     { return filepath.Join(poiflowDir(), "cache") }
+func statePath() string    { return filepath.Join(poiflowDir(), "tasks.json") }
+func configPath() string   { return filepath.Join(poiflowDir(), akFileName) }
 
 type App struct {
 	ctx    context.Context
@@ -34,7 +33,7 @@ func NewApp() *App {
 	a := &App{}
 	a.reloadAKs()
 	executor := task.NewExecutor(a.akPool)
-	a.taskQ = task.NewQueue(executor, a.onTaskEvent)
+	a.taskQ = task.NewQueue(executor, a.onTaskEvent, cacheDir(), statePath())
 	return a
 }
 

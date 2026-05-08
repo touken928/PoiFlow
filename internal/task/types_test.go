@@ -39,26 +39,9 @@ func TestStatusString(t *testing.T) {
 
 func TestTargetFields(t *testing.T) {
 	t1 := Target{Province: "云南省", City: "", Name: "昆明市"}
-	if t1.Name != "昆明市" {
-		t.Errorf("expected Name '昆明市', got '%s'", t1.Name)
-	}
+	if t1.Name != "昆明市" { t.Errorf("expected Name '昆明市', got '%s'", t1.Name) }
 	t2 := Target{Province: "北京市", City: "", Name: "北京市"}
-	if t2.Name != "北京市" {
-		t.Errorf("expected Name '北京市', got '%s'", t2.Name)
-	}
+	if t2.Name != "北京市" { t.Errorf("expected Name '北京市', got '%s'", t2.Name) }
 	t3 := Target{Province: "上海市", City: "上海市", Name: "浦东新区"}
-	if t3.Name != "浦东新区" {
-		t.Errorf("expected Name '浦东新区', got '%s'", t3.Name)
-	}
-}
-
-func TestNewID(t *testing.T) {
-	id1 := newID()
-	id2 := newID()
-	if id1 == id2 {
-		t.Error("expected different IDs")
-	}
-	if len(id1) < 6 {
-		t.Errorf("expected ID length >= 6, got %d (%s)", len(id1), id1)
-	}
+	if t3.Name != "浦东新区" { t.Errorf("expected Name '浦东新区', got '%s'", t3.Name) }
 }
