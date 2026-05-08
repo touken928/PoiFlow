@@ -283,6 +283,12 @@ func (q *Queue) execute(t *Task) {
 		q.addLog(t.ID, "info", fmt.Sprintf("从第 %d/%d 个目标继续", startFrom+1, total))
 	}
 
+	targetRegion := func(t Target) string {
+		if t.City != "" { return t.City + t.Name }
+		if t.Province != "" && t.Province != t.Name { return t.Province + t.Name }
+		return t.Name
+	}
+
 	for i, target := range searchTargets {
 		if i < startFrom { continue }
 		func() {
@@ -296,7 +302,7 @@ func (q *Queue) execute(t *Task) {
 		for qi, term := range t.Queries {
 			q.addLog(t.ID, "info", fmt.Sprintf("搜索 [%d/%d] %s | 词: %s", i+1, total, target.Name, term.Query))
 
-			results, err := q.executor.SearchTarget(term.Query, term.Type, target.Name)
+			results, err := q.executor.SearchTarget(term.Query, term.Type, targetRegion(target))
 			if err != nil {
 				q.mu.Lock()
 				t.Error = err.Error()
