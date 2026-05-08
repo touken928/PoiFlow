@@ -112,8 +112,8 @@ function App(){
         catch(e:any){setMsg('创建失败: '+e);}
     };
     const selectTask=async(t:Task)=>{setSel(t);try{setLogs(await GetTaskLogs(t.id)||[]);}catch(e){}};
-    const handleExport=async(id:string)=>{try{const r=await ExportTaskDialog(id);if(r)setMsg(r);}catch(e:any){setMsg('导出失败: '+e);}};
-    const handleExportGeoJSON=async(id:string)=>{try{const r=await ExportTaskGeoJSON(id);if(r)setMsg(r);}catch(e:any){setMsg('导出GeoJSON失败: '+e);}};
+    const handleExport=async(id:string)=>{console.log('export csv',id);try{const r=await ExportTaskDialog(id);console.log('export result',r);if(r)setMsg(r);}catch(e:any){console.error(e);setMsg('导出失败: '+e);}};
+    const handleExportGeoJSON=async(id:string)=>{console.log('export geojson',id);try{const r=await ExportTaskGeoJSON(id);console.log('export result',r);if(r)setMsg(r);}catch(e:any){console.error(e);setMsg('导出GeoJSON失败: '+e);}};
     const handlePause=async(id:string)=>{await PauseTask(id);loadAll();};
     const handleResume=async(id:string)=>{await ResumeTask(id);loadAll();};
     const handleCancel=async(id:string)=>{await CancelTask(id);loadAll();};

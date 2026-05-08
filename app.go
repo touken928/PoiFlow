@@ -176,14 +176,22 @@ func (a *App) ExportTaskCSV(taskID, filePath string) string {
 
 func (a *App) ExportTaskDialog(taskID string) string {
 	records := a.taskQ.Records(taskID)
-	if records == nil { return "任务未找到或无记录" }
-	if a.ctx == nil { return "应用未初始化" }
+	println("ExportTaskDialog called, taskID:", taskID, "records:", len(records))
+	if records == nil {
+		println("  records nil")
+		return "任务未找到或无记录"
+	}
+	if a.ctx == nil {
+		println("  ctx nil")
+		return "应用未初始化"
+	}
 
 	taskName := taskID
 	for _, t := range a.taskQ.List() {
 		if t.ID == taskID && t.Name != "" { taskName = t.Name; break }
 	}
 
+	println("  opening SaveFileDialog...")
 	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
 		Title:           "导出CSV",
 		DefaultFilename: sanitizeFilename(taskName) + ".csv",
@@ -192,14 +200,17 @@ func (a *App) ExportTaskDialog(taskID string) string {
 		},
 		CanCreateDirectories: true,
 	})
+	println("  SaveFileDialog returned, path:", path, "err:", err)
 	if err != nil { return "对话框失败: " + err.Error() }
 	if path == "" { return "" }
 
 	if err := exporter.ToCSV(records, path); err != nil { return "导出失败: " + err.Error() }
+	println("  export success:", path)
 	return "成功导出至 " + path
 }
 
 func (a *App) ExportTaskGeoJSON(taskID string) string {
+	println("ExportTaskGeoJSON called, taskID:", taskID)
 	records := a.taskQ.Records(taskID)
 	if records == nil { return "任务未找到或无记录" }
 	if a.ctx == nil { return "应用未初始化" }
