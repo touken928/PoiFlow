@@ -1,4 +1,4 @@
-package akstore
+package store
 
 import (
 	"path/filepath"
