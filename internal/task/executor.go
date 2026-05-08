@@ -218,20 +218,25 @@ func (q *Queue) List() []*Task {
 
 func (q *Queue) GetLogs(taskID string) []LogEntry {
 	q.mu.Lock()
-	l := q.logs[taskID]
+	memoryLogs := q.logs[taskID]
 	q.mu.Unlock()
-	if len(l) > 0 { out := make([]LogEntry, len(l)); copy(out, l); return out }
-	data, err := os.ReadFile(q.logPath(taskID))
-	if err != nil { return nil }
+
 	var out []LogEntry
-	for _, line := range strings.Split(string(data), "\n") {
-		if line == "" { continue }
-		parts := strings.SplitN(line, " ", 3)
-		level := "info"
-		if len(parts) >= 2 { level = strings.Trim(parts[1], "[]") }
-		msg := line
-		if len(parts) >= 3 { msg = parts[2] }
-		out = append(out, LogEntry{Time: parts[0], Message: msg, Level: level})
+	if data, err := os.ReadFile(q.logPath(taskID)); err == nil {
+		for _, line := range strings.Split(string(data), "\n") {
+			if line == "" { continue }
+			parts := strings.SplitN(line, " ", 3)
+			level := "info"
+			if len(parts) >= 2 { level = strings.Trim(parts[1], "[]") }
+			msg := line
+			if len(parts) >= 3 { msg = parts[2] }
+			out = append(out, LogEntry{Time: parts[0], Message: msg, Level: level})
+		}
+	}
+	if len(memoryLogs) > len(out) {
+		for _, e := range memoryLogs[len(out):] {
+			out = append(out, e)
+		}
 	}
 	return out
 }
