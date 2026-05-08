@@ -17,6 +17,8 @@ export function ExportTaskCSV(arg1:string,arg2:string):Promise<string>;
 
 export function ExportTaskDialog(arg1:string):Promise<string>;
 
+export function ExportTaskGeoJSON(arg1:string):Promise<string>;
+
 export function GetAKItems():Promise<Array<main.AKInfo>>;
 
 export function GetCities(arg1:string):Promise<Array<string>>;

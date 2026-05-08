@@ -30,6 +30,10 @@ export function ExportTaskDialog(arg1) {
   return window['go']['main']['App']['ExportTaskDialog'](arg1);
 }
 
+export function ExportTaskGeoJSON(arg1) {
+  return window['go']['main']['App']['ExportTaskGeoJSON'](arg1);
+}
+
 export function GetAKItems() {
   return window['go']['main']['App']['GetAKItems']();
 }

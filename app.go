@@ -199,6 +199,32 @@ func (a *App) ExportTaskDialog(taskID string) string {
 	return "成功导出至 " + path
 }
 
+func (a *App) ExportTaskGeoJSON(taskID string) string {
+	records := a.taskQ.Records(taskID)
+	if records == nil { return "任务未找到或无记录" }
+	if a.ctx == nil { return "应用未初始化" }
+
+	taskName := taskID
+	for _, t := range a.taskQ.List() {
+		if t.ID == taskID && t.Name != "" { taskName = t.Name; break }
+	}
+
+	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title:           "导出GeoJSON",
+		DefaultFilename: sanitizeFilename(taskName) + ".geojson",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "GeoJSON文件 (*.geojson)", Pattern: "*.geojson"},
+			{DisplayName: "JSON文件 (*.json)", Pattern: "*.json"},
+		},
+		CanCreateDirectories: true,
+	})
+	if err != nil { return "对话框失败: " + err.Error() }
+	if path == "" { return "" }
+
+	if err := exporter.ToGeoJSON(records, path); err != nil { return "导出失败: " + err.Error() }
+	return "成功导出至 " + path
+}
+
 func sanitizeFilename(s string) string {
 	b := make([]byte, 0, len(s))
 	for i := 0; i < len(s); i++ {

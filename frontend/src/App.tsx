@@ -12,7 +12,7 @@ import {
 import {
     GetProvinces, GetCities, GetCounties, CreateTask, GetTasks,
     CancelTask, PauseTask, ResumeTask, DeleteTask, GetAKItems,
-    ResetAKPool, AddAK, RemoveAK, GetTaskLogs, ExportTaskDialog, ExpandCount,
+    ResetAKPool, AddAK, RemoveAK, GetTaskLogs, ExportTaskDialog, ExportTaskGeoJSON, ExpandCount,
 } from '../wailsjs/go/main/App';
 import {EventsOn} from '../wailsjs/runtime/runtime';
 
@@ -113,6 +113,7 @@ function App(){
     };
     const selectTask=async(t:Task)=>{setSel(t);try{setLogs(await GetTaskLogs(t.id)||[]);}catch(e){}};
     const handleExport=async(id:string)=>{try{const r=await ExportTaskDialog(id);if(r)setMsg(r);}catch(e:any){setMsg('导出失败: '+e);}};
+    const handleExportGeoJSON=async(id:string)=>{try{const r=await ExportTaskGeoJSON(id);if(r)setMsg(r);}catch(e:any){setMsg('导出GeoJSON失败: '+e);}};
     const handlePause=async(id:string)=>{await PauseTask(id);loadAll();};
     const handleResume=async(id:string)=>{await ResumeTask(id);loadAll();};
     const handleCancel=async(id:string)=>{await CancelTask(id);loadAll();};
@@ -135,7 +136,7 @@ function App(){
                     {sel.status===1&&<ToolbarButton icon={<Pause24Regular/>} onClick={()=>handlePause(sel.id)}>暂停</ToolbarButton>}
                     {sel.status===2&&<ToolbarButton icon={<Play24Regular/>} onClick={()=>handleResume(sel.id)}>继续</ToolbarButton>}
                     {sel.status===0&&<ToolbarButton icon={<Delete24Regular/>} onClick={()=>handleCancel(sel.id)}>取消</ToolbarButton>}
-                    {(sel.status===3||sel.status===4)&&<ToolbarButton icon={<ArrowDownload24Regular/>} onClick={()=>handleExport(sel.id)}>导出</ToolbarButton>}
+                    {(sel.status===3||sel.status===4)&&<><ToolbarButton icon={<ArrowDownload24Regular/>} onClick={()=>handleExport(sel.id)}>CSV</ToolbarButton><ToolbarButton icon={<ArrowDownload24Regular/>} onClick={()=>handleExportGeoJSON(sel.id)}>GeoJSON</ToolbarButton></>}
                     {(sel.status===3||sel.status===4||sel.status===5)&&<ToolbarButton icon={<Delete24Regular/>} onClick={()=>handleDelete(sel.id)}>删除</ToolbarButton>}
                 </div>
             </div>
