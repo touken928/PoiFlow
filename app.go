@@ -5,14 +5,15 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/joho/godotenv"
 	"github.com/touken928/PoiFlow/internal/akpool"
-	"github.com/touken928/PoiFlow/internal/store"
 	"github.com/touken928/PoiFlow/internal/exporter"
+	"github.com/touken928/PoiFlow/internal/store"
 	"github.com/touken928/PoiFlow/internal/task"
 	"github.com/touken928/PoiFlow/pkg/division"
-
+	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -43,6 +44,14 @@ func NewApp() *App {
 }
 
 func (a *App) startup(ctx context.Context) { a.ctx = ctx }
+
+func (a *App) onSecondInstanceLaunch(secondInstanceData options.SecondInstanceData) {
+	println("检测到第二个实例启动，参数:", strings.Join(secondInstanceData.Args, ","))
+	if a.ctx != nil {
+		runtime.WindowUnminimise(a.ctx)
+		runtime.Show(a.ctx)
+	}
+}
 
 func (a *App) reloadAKs() {
 	entries, err := store.LoadAKs(configPath())

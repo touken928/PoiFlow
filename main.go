@@ -12,10 +12,8 @@ import (
 var assets embed.FS
 
 func main() {
-	// Create an instance of the app structure
 	app := NewApp()
 
-	// Create application with options
 	err := wails.Run(&options.App{
 		Title:  "PoiFlow",
 		Width:  1024,
@@ -27,6 +25,10 @@ func main() {
 		OnStartup:        app.startup,
 		Bind: []interface{}{
 			app,
+		},
+		SingleInstanceLock: &options.SingleInstanceLock{
+			UniqueId:                  "com.touken928.PoiFlow",
+			OnSecondInstanceLaunch:    app.onSecondInstanceLaunch,
 		},
 	})
 
