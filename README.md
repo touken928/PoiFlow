@@ -38,7 +38,7 @@ GitHub Releases 页面提供 Windows 版本直接下载使用。
 
 1. 打开软件，在左下角 **Settings** → 添加百度地图 API Key
 
-   ![截屏2026-05-08 19.15.15](./assets/截屏2026-05-08 19.15.15.png)
+   ![AK设置](./assets/screenshot-main.png)
 
 2. 点击 **新建** 创建采集任务
 
@@ -50,13 +50,13 @@ GitHub Releases 页面提供 Windows 版本直接下载使用。
 
 6. 可选：指定 CSV 路径以支持实时写入和断点续采
 
-   ![截屏2026-05-08 19.16.19](./assets/截屏2026-05-08 19.16.19.png)
+   ![新建任务](./assets/screenshot-task.png)
 
 7. 任务自动加入队列顺序执行，可在右侧面板查看实时日志
 
 8. 任务完成后点击 **导出** 保存为 CSV 文件
 
-   ![截屏2026-05-08 19.16.40](./assets/截屏2026-05-08 19.16.40.png)
+   ![导出结果](./assets/screenshot-ak.png)
 
 ## 项目结构
 
