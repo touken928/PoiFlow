@@ -20,7 +20,7 @@ func ToCSV(records []task.Record, filePath string) error {
 	}
 	w := csv.NewWriter(f)
 	defer w.Flush()
-	header := []string{"名称", "经度", "纬度", "地址", "电话", "省份", "城市", "区县", "UID", "搜索词", "任务名", "搜索目标"}
+	header := []string{"名称", "经度", "纬度", "地址", "电话", "省份", "城市", "区县", "UID", "搜索词", "分类", "任务名", "搜索目标"}
 	if err := w.Write(header); err != nil {
 		return fmt.Errorf("failed to write header: %w", err)
 	}
@@ -28,7 +28,7 @@ func ToCSV(records []task.Record, filePath string) error {
 		row := []string{
 			r.Name, fmt.Sprintf("%.6f", r.Lng), fmt.Sprintf("%.6f", r.Lat),
 			r.Address, r.Telephone, r.Province, r.City, r.Area,
-			r.UID, r.Query, r.TaskName, r.Target,
+			r.UID, r.Query, r.Type, r.TaskName, r.Target,
 		}
 		for i, v := range row {
 			row[i] = strings.ReplaceAll(v, "\"", "\"\"")

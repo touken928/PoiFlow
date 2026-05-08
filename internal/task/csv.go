@@ -18,7 +18,7 @@ func LoadExistingUIDs(path string) (map[string]bool, error) {
 	uids := make(map[string]bool)
 	for i, row := range rows {
 		if i == 0 { continue }
-		if len(row) >= 9 { uids[row[8]] = true }
+		if len(row) >= 10 { uids[row[9]] = true }
 	}
 	return uids, nil
 }
@@ -33,7 +33,7 @@ func AppendRecord(path string, rec Record, knownUIDs map[string]bool) error {
 	if info.Size() == 0 {
 		if _, err := f.WriteString("\xEF\xBB\xBF"); err != nil { return err }
 		w := csv.NewWriter(f)
-		_ = w.Write([]string{"名称", "经度", "纬度", "地址", "电话", "省份", "城市", "区县", "UID", "搜索词", "任务名", "搜索目标"})
+		_ = w.Write([]string{"名称", "经度", "纬度", "地址", "电话", "省份", "城市", "区县", "UID", "搜索词", "分类", "任务名", "搜索目标"})
 		w.Flush()
 	}
 	w := csv.NewWriter(f)
@@ -45,7 +45,7 @@ func recordRow(r Record) []string {
 	return []string{
 		r.Name, formatFloat(r.Lng), formatFloat(r.Lat),
 		r.Address, r.Telephone, r.Province, r.City, r.Area,
-		r.UID, r.Query, r.TaskName, r.Target,
+		r.UID, r.Query, r.Type, r.TaskName, r.Target,
 	}
 }
 

@@ -20,11 +20,13 @@ const STATUS_LABELS = ['等待中','执行中','已暂停','已完成','失败',
 const GRAN = ['省级','市级','区县级'];
 
 interface Task {
-    id:string; name:string; query:string; type:string; exportPath:string;
-    areaGranularity:number; queryGranularity:number;
-    targets:{province:string;city:string;name:string}[];
-    status:number; progress:string; records:number; error:string;
-    createdAt:string; updatedAt:string;
+    id: string; name: string;
+    queries: {query:string;type:string}[];
+    exportPath: string;
+    areaGranularity: number; queryGranularity: number;
+    targets: {province:string;city:string;name:string}[];
+    status: number; progress: string; records: number; error: string;
+    createdAt: string; updatedAt: string;
 }
 interface LogEntry{time:string;message:string;level:string}
 interface AKItem{ak:string;used:number;failed:boolean;failMsg:string}
@@ -61,9 +63,8 @@ function App(){
     const [openNew,setOpenNew]=useState(false);
     const [openAk,setOpenAk]=useState(false);
     const [nName,setNName]=useState('');
-    const [nQuery,setNQuery]=useState('');
-    const [nType,setNType]=useState('');
     const [nExport,setNExport]=useState('');
+    const [nQueries,setNQueries]=useState([{query:'',type:''}]);
     const [nAreaGran,setNAreaGran]=useState(0);
     const [nQueryGran,setNQueryGran]=useState(0);
     const [provinces,setProvinces]=useState<string[]>([]);
@@ -92,7 +93,13 @@ function App(){
     const onCityChange=(v:string)=>{setNCity(v);setCounties([]);if(v&&nProv)GetCounties(nProv,v).then(setCounties).catch(()=>{});};
     const toggleTarget=(name:string)=>setNTargets(p=>{if(p.some(t=>t.name===name))return p.filter(t=>t.name!==name);if(nAreaGran===0)return[...p,{province:name,city:'',name}];if(nAreaGran===1)return[...p,{province:nProv,city:'',name}];return[...p,{province:nProv,city:nCity,name}];});
 
-    const handleCreate=async()=>{if(!nName||!nQuery||nTargets.length===0){setMsg('请填写完整信息');return;}try{await CreateTask(nName,nQuery,nType,nExport,nAreaGran,nQueryGran,nTargets);setOpenNew(false);setMsg('');setNName('');setNQuery('');setNType('');setNExport('');setNTargets([]);setNProv('');setNCity('');setExpandCount(0);}catch(e:any){setMsg('创建失败: '+e);}};
+    const handleCreate = async () => {
+        const valid = nQueries.filter(q => q.query.trim());
+        if(!nName||valid.length===0||nTargets.length===0){setMsg('请填写任务名称、搜索词并选择目标');return;}
+        try{await CreateTask(nName,nExport,nAreaGran,nQueryGran,nTargets,valid);setOpenNew(false);setMsg('');setNName('');setNExport('');setNQueries([{query:'',type:''}]);
+        setNTargets([]);setNProv('');setNCity('');setExpandCount(0);}
+        catch(e:any){setMsg('创建失败: '+e);}
+    };
     const selectTask=async(t:Task)=>{setSel(t);try{setLogs(await GetTaskLogs(t.id)||[]);}catch(e){}};
     const handleExport=async(id:string)=>{try{const r=await ExportTaskDialog(id);if(r)setMsg(r);}catch(e:any){setMsg('导出失败: '+e);}};
     const handlePause=async(id:string)=>{await PauseTask(id);loadAll();};
@@ -107,6 +114,7 @@ function App(){
     const available=nAreaGran===0?provinces:nAreaGran===1?cities:counties;
 
     const badge=(st:number)=>{const m:Record<number,'success'|'warning'|'danger'|'important'>={0:'important',1:'warning',2:'warning',3:'success',4:'danger',5:'important'};return<Badge appearance="filled" color={m[st]||'important'} size="small">{STATUS_LABELS[st]||'?'}</Badge>;};
+    const nQueriesText=(t:Task)=>{if(!t.queries||t.queries.length===0)return'';return t.queries.map(q=>q.query+(q.type?'('+q.type+')':'')).join(', ');};
 
     const logLevelStyle=(lvl:string)=>({color:lvl==='error'?tokens.colorStatusDangerForeground1:lvl==='warn'?tokens.colorStatusWarningForeground1:tokens.colorNeutralForeground1});
 
@@ -151,7 +159,7 @@ function App(){
                         {tasks.map(t=>(
                             <div key={t.id} style={{...css.taskCard,...(sel?.id===t.id?css.taskCardSel:{})}} onClick={()=>selectTask(t)}>
                                 <div style={css.taskName}>{t.name}</div>
-                                <div style={css.taskMeta}>{t.query} · 区域{GRAN[t.areaGranularity]}→{GRAN[t.queryGranularity]}</div>
+                                <div style={css.taskMeta}>{nQueriesText(t)} · 区域{GRAN[t.areaGranularity]}→{GRAN[t.queryGranularity]}</div>
                                 <div style={css.statusBar}>
                                     {badge(t.status)}
                                     <Text size={100}>{t.records}条</Text>
@@ -175,8 +183,17 @@ function App(){
                         <DialogContent>
                             <div style={css.form}>
                                 <Input placeholder="任务名称" value={nName} onChange={(_e,d)=>setNName(d.value)}/>
-                                <Input placeholder="搜索词（如：ATM机）" value={nQuery} onChange={(_e,d)=>setNQuery(d.value)}/>
-                                <Input placeholder="类型（可选，如：银行）" value={nType} onChange={(_e,d)=>setNType(d.value)}/>
+
+                                <Text weight="semibold" size={200} style={{color:tokens.colorNeutralForeground2,letterSpacing:'0.5px',marginTop:'4px'}}>── 搜索词和分类 ──</Text>
+                                {nQueries.map((q,i)=>(
+                                    <div key={i} style={{display:'flex',gap:'8px',alignItems:'center'}}>
+                                        <Input placeholder="搜索词" value={q.query} onChange={(_e,d)=>{const copy=[...nQueries];copy[i]={...copy[i],query:d.value};setNQueries(copy);}} style={{flex:1}}/>
+                                        <Input placeholder="分类" value={q.type} onChange={(_e,d)=>{const copy=[...nQueries];copy[i]={...copy[i],type:d.value};setNQueries(copy);}} style={{flex:1}}/>
+                                        <Button disabled={nQueries.length<=1} onClick={()=>setNQueries(nQueries.filter((_,j)=>j!==i))}>×</Button>
+                                    </div>
+                                ))}
+                                <Button appearance="subtle" size="small" onClick={()=>setNQueries([...nQueries,{query:'',type:''}])}>+ 添加搜索词</Button>
+
                                 <Input placeholder="CSV导出路径（可选，支持续采）" value={nExport} onChange={(_e,d)=>setNExport(d.value)}/>
 
                                 <Text weight="semibold" size={200} style={{color:tokens.colorNeutralForeground2,letterSpacing:'0.5px',marginTop:'4px'}}>── 目标范围 ──</Text>

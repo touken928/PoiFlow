@@ -62,12 +62,21 @@ type TaskTargetInput struct {
 	Name     string `json:"name"`
 }
 
-func (a *App) CreateTask(name, query, poiType, exportPath string, areaGran, queryGran int, targets []TaskTargetInput) *task.Task {
+type SearchTermInput struct {
+	Query string `json:"query"`
+	Type  string `json:"type"`
+}
+
+func (a *App) CreateTask(name, exportPath string, areaGran, queryGran int, targets []TaskTargetInput, queries []SearchTermInput) *task.Task {
 	ts := make([]task.Target, len(targets))
 	for i, t := range targets {
 		ts[i] = task.Target{Province: t.Province, City: t.City, Name: t.Name}
 	}
-	return a.taskQ.Add(name, query, poiType, exportPath, task.Granularity(areaGran), task.Granularity(queryGran), ts)
+	qs := make([]task.SearchTerm, len(queries))
+	for i, q := range queries {
+		qs[i] = task.SearchTerm{Query: q.Query, Type: q.Type}
+	}
+	return a.taskQ.Add(name, exportPath, task.Granularity(areaGran), task.Granularity(queryGran), ts, qs)
 }
 
 func (a *App) GetTasks() []*task.Task     { return a.taskQ.List() }

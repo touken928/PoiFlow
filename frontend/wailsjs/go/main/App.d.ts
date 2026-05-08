@@ -7,7 +7,7 @@ export function AddAK(arg1:string):Promise<string>;
 
 export function CancelTask(arg1:string):Promise<boolean>;
 
-export function CreateTask(arg1:string,arg2:string,arg3:string,arg4:string,arg5:number,arg6:number,arg7:Array<main.TaskTargetInput>):Promise<task.Task>;
+export function CreateTask(arg1:string,arg2:string,arg3:number,arg4:number,arg5:Array<main.TaskTargetInput>,arg6:Array<main.SearchTermInput>):Promise<task.Task>;
 
 export function DeleteTask(arg1:string):Promise<boolean>;
 

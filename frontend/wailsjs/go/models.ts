@@ -18,6 +18,20 @@ export namespace main {
 	        this.failMsg = source["failMsg"];
 	    }
 	}
+	export class SearchTermInput {
+	    query: string;
+	    type: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SearchTermInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.query = source["query"];
+	        this.type = source["type"];
+	    }
+	}
 	export class TaskTargetInput {
 	    province: string;
 	    city: string;
@@ -55,6 +69,20 @@ export namespace task {
 	        this.level = source["level"];
 	    }
 	}
+	export class SearchTerm {
+	    query: string;
+	    type: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SearchTerm(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.query = source["query"];
+	        this.type = source["type"];
+	    }
+	}
 	export class Target {
 	    province: string;
 	    city: string;
@@ -74,8 +102,7 @@ export namespace task {
 	export class Task {
 	    id: string;
 	    name: string;
-	    query: string;
-	    type: string;
+	    queries: SearchTerm[];
 	    exportPath: string;
 	    areaGranularity: number;
 	    queryGranularity: number;
@@ -97,8 +124,7 @@ export namespace task {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
 	        this.name = source["name"];
-	        this.query = source["query"];
-	        this.type = source["type"];
+	        this.queries = this.convertValues(source["queries"], SearchTerm);
 	        this.exportPath = source["exportPath"];
 	        this.areaGranularity = source["areaGranularity"];
 	        this.queryGranularity = source["queryGranularity"];

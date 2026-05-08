@@ -107,20 +107,20 @@ func NewQueue(executor *Executor, onEvent EventHandler) *Queue {
 	}
 }
 
-func (q *Queue) Add(name, query, poiType, exportPath string, areaGran, queryGran Granularity, targets []Target) *Task {
+func (q *Queue) Add(name, exportPath string, areaGran, queryGran Granularity, targets []Target, queries []SearchTerm) *Task {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 
 	searchTargets := expandTargets(targets, areaGran, queryGran)
 	t := &Task{
-		ID: newID(), Name: name, Query: query, Type: poiType,
+		ID: newID(), Name: name, Queries: queries,
 		ExportPath: exportPath, AreaGranularity: areaGran,
 		QueryGranularity: queryGran, Targets: targets,
 		Status: StatusPending, Progress: "0/" + itoa(len(searchTargets)),
 		Records: len(searchTargets), CreatedAt: time.Now(), UpdatedAt: time.Now(),
 	}
 	q.tasks = append(q.tasks, t)
-	q.addLogUnsafe(t.ID, "info", "任务已创建，目标数: "+itoa(len(searchTargets)))
+	q.addLogUnsafe(t.ID, "info", "任务已创建，目标: "+itoa(len(searchTargets))+"个 | 搜索词: "+itoa(len(queries))+"个")
 	if exportPath != "" {
 		q.addLogUnsafe(t.ID, "info", "导出路径: "+exportPath)
 	}
@@ -271,51 +271,69 @@ func (q *Queue) execute(t *Task) {
 			break
 		}
 
-		q.addLog(t.ID, "info", fmt.Sprintf("搜索 [%d/%d]: %s", i+1, total, target.Name))
+		for qi, term := range t.Queries {
+			q.addLog(t.ID, "info", fmt.Sprintf("搜索 [%d/%d] %s | 词: %s", i+1, total, target.Name, term.Query))
 
-		results, err := q.executor.SearchTarget(t.Query, t.Type, target.Name)
-		if err != nil {
-			q.mu.Lock()
-			t.Error = err.Error()
-			t.Status = StatusFailed
-			t.UpdatedAt = time.Now()
-			q.mu.Unlock()
-			q.addLog(t.ID, "error", "搜索失败: "+err.Error())
-			q.emit("task:failed", map[string]interface{}{"task": t, "target": target, "error": err.Error()})
-			return
-		}
-
-		added := 0
-		for _, r := range results {
-			rec := Record{
-				Name: r.Name, Lng: r.Location.Lng, Lat: r.Location.Lat,
-				Address: r.Address, Telephone: r.Telephone,
-				Province: r.Province, City: r.City, Area: r.Area,
-				UID: r.UID, Query: t.Query, TaskName: t.Name, Target: target.Name,
+			results, err := q.executor.SearchTarget(term.Query, term.Type, target.Name)
+			if err != nil {
+				q.mu.Lock()
+				t.Error = err.Error()
+				t.Status = StatusFailed
+				t.UpdatedAt = time.Now()
+				q.mu.Unlock()
+				q.addLog(t.ID, "error", "搜索失败: "+err.Error())
+				q.emit("task:failed", map[string]interface{}{"task": t, "target": target, "error": err.Error()})
+				return
 			}
-			allRecords = append(allRecords, rec)
-			if t.ExportPath != "" {
-				if !knownUIDs[r.UID] {
-					_ = AppendRecord(t.ExportPath, rec, knownUIDs)
-					added++
+
+			added := 0
+			for _, r := range results {
+				rec := Record{
+					Name: r.Name, Lng: r.Location.Lng, Lat: r.Location.Lat,
+					Address: r.Address, Telephone: r.Telephone,
+					Province: r.Province, City: r.City, Area: r.Area,
+					UID: r.UID, Query: term.Query, Type: term.Type, TaskName: t.Name, Target: target.Name,
+				}
+				allRecords = append(allRecords, rec)
+				if t.ExportPath != "" {
+					if !knownUIDs[r.UID] {
+						_ = AppendRecord(t.ExportPath, rec, knownUIDs)
+						added++
+					}
 				}
 			}
+			_ = added
+
+			hint := ""
+			if len(results) > 0 {
+				hint = fmt.Sprintf("，获取 %d 条", len(results))
+			}
+			q.addLog(t.ID, "info", fmt.Sprintf("完成 [%d/%d] %s | 词: %s%s", i+1, total, target.Name, term.Query, hint))
+
+			func() {
+				q.mu.Lock()
+				paused := t.Status == StatusPaused
+				q.mu.Unlock()
+				if qi < len(t.Queries)-1 && paused {
+					q.addLog(t.ID, "warn", "任务已暂停")
+				}
+			}()
+			if t.Status == StatusPaused {
+				break
+			}
 		}
-		_ = added
+
+		if t.Status == StatusPaused {
+			break
+		}
 
 		q.mu.Lock()
 		t.Records = len(allRecords)
 		t.Progress = itoa(i+1) + "/" + itoa(total)
 		t.UpdatedAt = time.Now()
 		q.mu.Unlock()
-
-		hint := ""
-		if len(results) > 0 {
-			hint = fmt.Sprintf("，获取 %d 条", len(results))
-		}
-		q.addLog(t.ID, "info", fmt.Sprintf("完成 [%d/%d]: %s%s", i+1, total, target.Name, hint))
 		q.emit("task:progress", map[string]interface{}{
-			"task": t, "target": target, "records": len(results),
+			"task": t, "target": target, "records": len(allRecords),
 			"total": total, "current": i + 1, "allCount": len(allRecords),
 		})
 	}
