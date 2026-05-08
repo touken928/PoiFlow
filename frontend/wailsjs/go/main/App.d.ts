@@ -36,7 +36,4 @@ export function PauseTask(arg1:string):Promise<boolean>;
 export function RemoveAK(arg1:string):Promise<string>;
 
 export function ResetAKPool():Promise<void>;
-
 export function ResumeTask(arg1:string):Promise<boolean>;
-
-export function VerifyAK(arg1:string):Promise<string>;

@@ -72,8 +72,3 @@ export function ResetAKPool() {
 
 export function ResumeTask(arg1) {
   return window['go']['main']['App']['ResumeTask'](arg1);
-}
-
-export function VerifyAK(arg1) {
-  return window['go']['main']['App']['VerifyAK'](arg1);
-}

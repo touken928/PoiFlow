@@ -12,7 +12,7 @@ import {
 import {
     GetProvinces, GetCities, GetCounties, CreateTask, GetTasks,
     CancelTask, PauseTask, ResumeTask, DeleteTask, GetAKItems,
-    ResetAKPool, AddAK, RemoveAK, VerifyAK, GetTaskLogs, ExportTaskDialog, ExpandCount,
+    ResetAKPool, AddAK, RemoveAK, GetTaskLogs, ExportTaskDialog, ExpandCount,
 } from '../wailsjs/go/main/App';
 import {EventsOn} from '../wailsjs/runtime/runtime';
 
@@ -75,7 +75,6 @@ function App(){
     const [expandCount,setExpandCount]=useState(0);
     const [newAkName,setNewAkName]=useState('');
     const [newAkKey,setNewAkKey]=useState('');
-    const [verifying,setVerifying]=useState('');
     const [settingsTab,setSettingsTab]=useState('ak');
 
     const loadAll=useCallback(()=>{GetTasks().then(setTasks).catch(()=>{});GetAKItems().then(setAkItems).catch(()=>{});},[]);
@@ -120,8 +119,6 @@ function App(){
     const handleDelete=async(id:string)=>{await DeleteTask(id);loadAll();if(sel?.id===id){setSel(null);setLogs([]);}};
     const handleAddAk=async()=>{if(!newAkKey){setMsg('请输入AK');return;}const r=await AddAK(newAkName,newAkKey);if(r)setMsg(r);else{setNewAkName('');setNewAkKey('');setMsg('AK已添加');}GetAKItems().then(setAkItems).catch(()=>{});};
     const handleRemoveAk=async(ak:string)=>{const r=await RemoveAK(ak);if(r)setMsg(r);GetAKItems().then(setAkItems).catch(()=>{});};
-    const handleVerifyAk=async(ak:string)=>{setVerifying(ak);const r=await VerifyAK(ak);if(r)setMsg(ak.slice(0,8)+'... '+r);else setMsg(ak.slice(0,8)+'... 正常');setVerifying('');GetAKItems().then(setAkItems).catch(()=>{});};
-    const handleVerifyAll=async()=>{for(const it of akItems){setVerifying(it.ak);const r=await VerifyAK(it.ak);if(r)setMsg(it.ak.slice(0,8)+'... '+r);};setVerifying('');GetAKItems().then(setAkItems).catch(()=>{});};
 
     const available=nAreaGran===0?provinces:nAreaGran===1?cities:counties;
 
@@ -259,16 +256,14 @@ function App(){
                                     <Button appearance="primary" onClick={handleAddAk}>添加</Button>
                                 </div>
                                 <div style={{marginBottom:'12px',display:'flex',gap:'8px'}}>
-                                    <Button onClick={handleVerifyAll} disabled={!!verifying}>{verifying?'验证中...':'一键刷新所有AK状态'}</Button>
-                                    <Button onClick={()=>{ResetAKPool();GetAKItems().then(setAkItems).catch(()=>{});}}>重置计数</Button>
+                                    <Button onClick={()=>{ResetAKPool();GetAKItems().then(setAkItems).catch(()=>{});}}>重置AK状态</Button>
                                 </div>
                                 {akItems.map((it,i)=>(
                                     <div key={i} style={{display:'flex',alignItems:'center',gap:'12px',padding:'8px 0',borderBottom:`1px solid ${tokens.colorNeutralStroke2}`}}>
                                         <Text size={200} style={{width:'100px',fontWeight:'600'}}>{it.name||'未命名'}</Text>
                                         <Text size={200} style={{fontFamily:'monospace',flex:1,color:tokens.colorNeutralForeground3}}>{it.ak.slice(0,16)}...</Text>
                                         <Text size={200}>本次: {it.used}</Text>
-                                        <Badge appearance="filled" color={it.failed?'danger':'success'} size="small">{it.failed?'失效':'正常'}</Badge>
-                                        <Button size="small" onClick={()=>handleVerifyAk(it.ak)} disabled={!!verifying}>验证</Button>
+                                        <Badge appearance="filled" color={it.failed?'danger':'success'} size="small">{it.failed?'失效: '+it.failMsg:'正常'}</Badge>
                                         <Button size="small" onClick={()=>handleRemoveAk(it.ak)}>删除</Button>
                                     </div>
                                 ))}

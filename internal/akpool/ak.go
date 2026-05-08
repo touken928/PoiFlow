@@ -93,7 +93,6 @@ func (p *Pool) MarkFailed(ak, msg string) {
 		if item.AK == ak {
 			item.Failed = true
 			item.FailMsg = msg
-			item.Used = item.Limit
 			return
 		}
 	}
