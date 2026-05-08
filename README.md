@@ -1,8 +1,17 @@
-# PoiFlow
+<h1 align="center">PoiFlow</h1>
 
-**百度地图POI批量采集工具 | Baidu Maps POI Scraper — 行政区划检索、多AK并发、CSV导出**
+<p align="center">
+  <strong>百度地图POI批量采集工具 · 行政区划检索 · 多AK并发 · CSV导出</strong>
+</p>
 
-> **合法使用声明**
+<p align="center">
+  <a href="https://go.dev/dl/"><img src="https://img.shields.io/badge/go-1.23+-blue.svg?style=for-the-badge&logo=go" alt="Go 1.23+"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg?style=for-the-badge" alt="License: MIT"></a>
+  <a href="https://github.com/touken928/PoiFlow/releases"><img src="https://img.shields.io/github/v/release/touken928/PoiFlow?style=for-the-badge&logo=github" alt="GitHub release"></a>
+  <a href="https://github.com/touken928/PoiFlow/stargazers"><img src="https://img.shields.io/github/stars/touken928/PoiFlow?style=for-the-badge&color=yellow&logo=github" alt="GitHub stars"></a>
+</p>
+
+> ⚠️ **合法使用声明**
 > 本软件仅供学习研究使用。用户必须遵守百度地图 API 服务协议及相关法律法规，
 > 不得用于任何非法用途。使用者需自行承担全部法律责任。
 
