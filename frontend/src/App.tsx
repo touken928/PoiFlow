@@ -13,6 +13,7 @@ import {
     GetProvinces, GetCities, GetCounties, CreateTask, GetTasks,
     CancelTask, PauseTask, ResumeTask, DeleteTask, GetAKItems,
     ResetAKPool, AddAK, RemoveAK, GetTaskLogs, ExportTaskDialog, ExportTaskGeoJSON, ExpandCount,
+    GetExportConfig, SetExportConfig,
 } from '../wailsjs/go/main/App';
 import {EventsOn} from '../wailsjs/runtime/runtime';
 
@@ -76,6 +77,11 @@ function App(){
     const [newAkName,setNewAkName]=useState('');
     const [newAkKey,setNewAkKey]=useState('');
     const [settingsTab,setSettingsTab]=useState('ak');
+    const [exportFields,setExportFields]=useState<string[]>([]);
+    const allFields=['name','address','telephone','province','city','area','uid','query','type','taskName','target'];
+    const fieldLabels:Record<string,string>={name:'名称',address:'地址',telephone:'电话',province:'省份',city:'城市',area:'区县',uid:'UID',query:'搜索词',type:'分类',taskName:'任务名',target:'搜索目标'};
+
+    useEffect(()=>{GetExportConfig().then(c=>setExportFields(c.Fields||allFields)).catch(()=>{});},[]);
 
     const loadAll=useCallback(()=>{GetTasks().then(setTasks).catch(()=>{});GetAKItems().then(setAkItems).catch(()=>{});},[]);
 
@@ -120,6 +126,8 @@ function App(){
     const handleDelete=async(id:string)=>{await DeleteTask(id);loadAll();if(sel?.id===id){setSel(null);setLogs([]);}};
     const handleAddAk=async()=>{if(!newAkKey){setMsg('请输入AK');return;}const r=await AddAK(newAkName,newAkKey);if(r)setMsg(r);else{setNewAkName('');setNewAkKey('');setMsg('AK已添加');}GetAKItems().then(setAkItems).catch(()=>{});};
     const handleRemoveAk=async(ak:string)=>{const r=await RemoveAK(ak);if(r)setMsg(r);GetAKItems().then(setAkItems).catch(()=>{});};
+
+    const toggleField=async(f:string)=>{const next=exportFields.includes(f)?exportFields.filter(x=>x!==f):[...exportFields,f];setExportFields(next);await SetExportConfig(next);};
 
     const available=nAreaGran===0?provinces:nAreaGran===1?cities:counties;
 
@@ -249,6 +257,7 @@ function App(){
                         <DialogContent>
                             <TabList selectedValue={settingsTab} onTabSelect={(_e,d)=>setSettingsTab(d.value as string)} style={{marginBottom:'16px'}}>
                                 <Tab value="ak">API Keys</Tab>
+                                <Tab value="export">导出</Tab>
                                 <Tab value="about">关于</Tab>
                             </TabList>
                             {settingsTab==='ak'&&<>
@@ -270,6 +279,16 @@ function App(){
                                     </div>
                                 ))}
                             </>}
+                            {settingsTab==='export'&&<div style={{display:'flex',flexDirection:'column',gap:'8px'}}>
+                                <Text weight="semibold">导出字段设置</Text>
+                                <Text size={200} style={{color:tokens.colorNeutralForeground3}}>经纬度始终包含，选择其他要导出的字段：</Text>
+                                {allFields.map(f=>(
+                                    <div key={f} style={{display:'flex',alignItems:'center',gap:'8px',cursor:'pointer'}} onClick={()=>toggleField(f)}>
+                                        <input type="checkbox" checked={exportFields.includes(f)} readOnly/>
+                                        <Text>{fieldLabels[f]||f}</Text>
+                                    </div>
+                                ))}
+                            </div>}
                             {settingsTab==='about'&&<div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
                                 <Text weight="semibold" size={400}>PoiFlow</Text>
                                 <Text size={200}>百度POI数据采集桌面工具</Text>

@@ -46,6 +46,10 @@ export function GetCounties(arg1, arg2) {
   return window['go']['main']['App']['GetCounties'](arg1, arg2);
 }
 
+export function GetExportConfig() {
+  return window['go']['main']['App']['GetExportConfig']();
+}
+
 export function GetProvinces() {
   return window['go']['main']['App']['GetProvinces']();
 }
@@ -78,6 +82,6 @@ export function ResumeTask(arg1) {
   return window['go']['main']['App']['ResumeTask'](arg1);
 }
 
-export function VerifyAK(arg1) {
-  return window['go']['main']['App']['VerifyAK'](arg1);
+export function SetExportConfig(arg1) {
+  return window['go']['main']['App']['SetExportConfig'](arg1);
 }

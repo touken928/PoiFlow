@@ -11,7 +11,6 @@ import (
 	"github.com/touken928/PoiFlow/internal/akstore"
 	"github.com/touken928/PoiFlow/internal/exporter"
 	"github.com/touken928/PoiFlow/internal/task"
-	"github.com/touken928/PoiFlow/pkg/baidu"
 	"github.com/touken928/PoiFlow/pkg/division"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -46,7 +45,7 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) { a.ctx = ctx }
 
 func (a *App) reloadAKs() {
-	entries, err := akstore.Load(configPath())
+	entries, err := akstore.LoadAKs(configPath())
 	if err != nil { println("load aks failed:", err.Error()) }
 	keys := make([]string, len(entries))
 	for i, e := range entries { keys[i] = e.Key }
@@ -119,7 +118,7 @@ type AKInfo struct {
 
 func (a *App) GetAKItems() []AKInfo {
 	items := a.akPool.Items()
-	entries, _ := akstore.Load(configPath())
+	entries, _ := akstore.LoadAKs(configPath())
 	nameMap := make(map[string]string, len(entries))
 	for _, e := range entries { nameMap[e.Key] = e.Name }
 
@@ -134,35 +133,44 @@ func (a *App) ResetAKPool()   { a.akPool.ResetAll() }
 
 func (a *App) AddAK(name, key string) string {
 	if key == "" { return "AK不能为空" }
-	entries, err := akstore.Load(configPath())
+	entries, err := akstore.LoadAKs(configPath())
 	if err != nil { return "读取配置失败: " + err.Error() }
 	for _, e := range entries {
 		if e.Key == key { return "AK已存在" }
 	}
 	entries = append(entries, akstore.Entry{Name: name, Key: key})
-	if err := akstore.Save(configPath(), entries); err != nil { return "保存失败: " + err.Error() }
+	if err := akstore.SaveAKs(configPath(), entries); err != nil { return "保存失败: " + err.Error() }
 	a.reloadAKs()
 	return ""
 }
 
 func (a *App) RemoveAK(key string) string {
-	entries, err := akstore.Load(configPath())
+	entries, err := akstore.LoadAKs(configPath())
 	if err != nil { return "读取配置失败: " + err.Error() }
 	filtered := make([]akstore.Entry, 0, len(entries))
 	for _, e := range entries {
 		if e.Key != key { filtered = append(filtered, e) }
 	}
 	if len(filtered) == len(entries) { return "AK不存在" }
-	if err := akstore.Save(configPath(), filtered); err != nil { return "保存失败: " + err.Error() }
+	if err := akstore.SaveAKs(configPath(), filtered); err != nil { return "保存失败: " + err.Error() }
 	a.reloadAKs()
 	return ""
 }
 
-func (a *App) VerifyAK(ak string) string {
-	client := baidu.NewClient(ak)
-	err := client.Ping()
-	if err != nil {
-		return "失效: " + err.Error()
+func (a *App) GetExportConfig() akstore.ExportConfig {
+	ec, err := akstore.LoadExportConfig(configPath())
+	if err != nil { return akstore.DefaultExportConfig() }
+	if len(ec.Fields) == 0 { return akstore.DefaultExportConfig() }
+	return ec
+}
+
+func (a *App) SetExportConfig(fields []string) string {
+	ec := akstore.ExportConfig{}
+	for _, f := range fields {
+		ec.Fields = append(ec.Fields, akstore.ExportField(f))
+	}
+	if err := akstore.SaveExportConfig(configPath(), ec); err != nil {
+		return "保存失败: " + err.Error()
 	}
 	return ""
 }
@@ -170,7 +178,9 @@ func (a *App) VerifyAK(ak string) string {
 func (a *App) ExportTaskCSV(taskID, filePath string) string {
 	records := a.taskQ.Records(taskID)
 	if records == nil { return "任务未找到或无记录" }
-	if err := exporter.ToCSV(records, filePath); err != nil { return "导出失败: " + err.Error() }
+	ec, _ := akstore.LoadExportConfig(configPath())
+	fields := exportFieldsToStrings(ec)
+	if err := exporter.ToCSVFiltered(records, filePath, fields); err != nil { return "导出失败: " + err.Error() }
 	return "成功导出至 " + filePath
 }
 
@@ -195,7 +205,9 @@ func (a *App) ExportTaskDialog(taskID string) string {
 	if err != nil { return "对话框失败: " + err.Error() }
 	if path == "" { return "" }
 
-	if err := exporter.ToCSV(records, path); err != nil { return "导出失败: " + err.Error() }
+	ec, _ := akstore.LoadExportConfig(configPath())
+	fields := exportFieldsToStrings(ec)
+	if err := exporter.ToCSVFiltered(records, path, fields); err != nil { return "导出失败: " + err.Error() }
 	return "成功导出至 " + path
 }
 
@@ -221,8 +233,16 @@ func (a *App) ExportTaskGeoJSON(taskID string) string {
 	if err != nil { return "对话框失败: " + err.Error() }
 	if path == "" { return "" }
 
-	if err := exporter.ToGeoJSON(records, path); err != nil { return "导出失败: " + err.Error() }
+	ec, _ := akstore.LoadExportConfig(configPath())
+	fields := exportFieldsToStrings(ec)
+	if err := exporter.ToGeoJSONFiltered(records, path, fields); err != nil { return "导出失败: " + err.Error() }
 	return "成功导出至 " + path
+}
+
+func exportFieldsToStrings(ec akstore.ExportConfig) []string {
+	out := make([]string, len(ec.Fields))
+	for i, f := range ec.Fields { out[i] = string(f) }
+	return out
 }
 
 func sanitizeFilename(s string) string {
