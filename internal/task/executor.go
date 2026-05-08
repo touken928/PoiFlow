@@ -22,19 +22,26 @@ const defaultPageSize = 20
 type EventHandler func(event string, data interface{})
 
 type Executor struct {
-	pool *akpool.Pool
+	pool  *akpool.Pool
+	Logf  func(taskID, level, msg string)
 }
 
 func NewExecutor(pool *akpool.Pool) *Executor {
-	return &Executor{pool: pool}
+	return &Executor{pool: pool, Logf: func(_, _, _ string) {}}
 }
 
 func (e *Executor) SearchTarget(query, poiType, region string) ([]baidu.POIResult, error) {
 	regionLimit := true
 	scope := baidu.ScopeBasic
 	pageSize := defaultPageSize
+	poolSize := len(e.pool.Items())
+	maxRetries := poolSize * 2
+	if maxRetries < 3 { maxRetries = 3 }
+	var retries int
+
 	for pageNum := 0; ; pageNum++ {
 		ak := e.pool.Next()
+		e.Logf("", "info", "使用 AK: "+ak[:minInt(8, len(ak))]+"...")
 		e.pool.Throttle(ak)
 		client := baidu.NewClient(ak)
 		resp, err := client.RegionSearch(&baidu.RegionRequest{
@@ -45,6 +52,11 @@ func (e *Executor) SearchTarget(query, poiType, region string) ([]baidu.POIResul
 		if err != nil {
 			if apiErr, ok := err.(*baidu.APIError); ok && akpool.NeedsRotate(apiErr.Status) {
 				e.pool.MarkFailed(ak, apiErr.Error())
+				e.Logf("", "error", "AK "+ak[:minInt(8, len(ak))]+"... 失效: "+apiErr.Error())
+				retries++
+				if retries >= maxRetries {
+					return nil, fmt.Errorf("所有AK均已失效")
+				}
 				pageNum--
 				continue
 			}
@@ -69,6 +81,10 @@ func (e *Executor) SearchTarget(query, poiType, region string) ([]baidu.POIResul
 				if subErr != nil {
 					if apiErr, ok := subErr.(*baidu.APIError); ok && akpool.NeedsRotate(apiErr.Status) {
 						e.pool.MarkFailed(ak, apiErr.Error())
+						retries++
+						if retries >= maxRetries {
+							return nil, fmt.Errorf("所有AK均已失效")
+						}
 						pn--
 						continue
 					}
@@ -82,6 +98,8 @@ func (e *Executor) SearchTarget(query, poiType, region string) ([]baidu.POIResul
 		}
 	}
 }
+
+func minInt(a, b int) int { if a < b { return a }; return b }
 
 type Queue struct {
 	mu       sync.Mutex
@@ -97,6 +115,9 @@ type Queue struct {
 
 func NewQueue(executor *Executor, onEvent EventHandler, cacheDir, statePath string) *Queue {
 	os.MkdirAll(cacheDir, 0755)
+	executor.Logf = func(_, level, msg string) {
+		// executor doesn't have taskID, logs are emitted at execute level instead
+	}
 	q := &Queue{
 		executor: executor, onEvent: onEvent,
 		records: make(map[string][]Record),
@@ -219,9 +240,17 @@ func (q *Queue) processLoop() {
 	for {
 		q.mu.Lock()
 		var current *Task
-		for _, t := range q.tasks { if t.Status == StatusPending { current = t; break } }
+		hasPaused := false
+		for _, t := range q.tasks {
+			if t.Status == StatusPending && current == nil { current = t }
+			if t.Status == StatusPaused { hasPaused = true }
+		}
+		if current == nil || hasPaused {
+			if hasPaused { q.running = false }
+			q.mu.Unlock()
+			return
+		}
 		q.mu.Unlock()
-		if current == nil { q.mu.Lock(); q.running = false; q.mu.Unlock(); return }
 		q.execute(current)
 	}
 }
@@ -265,7 +294,14 @@ func (q *Queue) execute(t *Task) {
 			results, err := q.executor.SearchTarget(term.Query, term.Type, target.Name)
 			if err != nil {
 				q.mu.Lock()
-				t.Error = err.Error(); t.Status = StatusFailed; t.UpdatedAt = time.Now()
+				t.Error = err.Error()
+				if err.Error() == "所有AK均已失效" {
+					t.Status = StatusPaused
+					q.addLogUnsafe(t.ID, "error", "所有AK均已失效，任务已暂停")
+				} else {
+					t.Status = StatusFailed
+				}
+				t.UpdatedAt = time.Now()
 				q.mu.Unlock()
 				q.addLog(t.ID, "error", "搜索失败: "+err.Error())
 				q.emit("task:failed", map[string]interface{}{"task": t, "target": target, "error": err.Error()})
