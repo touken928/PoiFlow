@@ -166,9 +166,14 @@ func (a *App) ExportTaskDialog(taskID string) string {
 	if records == nil { return "任务未找到或无记录" }
 	if a.ctx == nil { return "应用未初始化" }
 
+	taskName := taskID
+	for _, t := range a.taskQ.List() {
+		if t.ID == taskID && t.Name != "" { taskName = t.Name; break }
+	}
+
 	path, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
 		Title:           "导出CSV",
-		DefaultFilename: taskID + ".csv",
+		DefaultFilename: sanitizeFilename(taskName) + ".csv",
 		Filters: []runtime.FileFilter{
 			{DisplayName: "CSV文件 (*.csv)", Pattern: "*.csv"},
 		},
@@ -179,4 +184,17 @@ func (a *App) ExportTaskDialog(taskID string) string {
 
 	if err := exporter.ToCSV(records, path); err != nil { return "导出失败: " + err.Error() }
 	return "成功导出至 " + path
+}
+
+func sanitizeFilename(s string) string {
+	b := make([]byte, 0, len(s))
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"' || c == '<' || c == '>' || c == '|' || c == '\x00' {
+			b = append(b, '_')
+		} else {
+			b = append(b, c)
+		}
+	}
+	return string(b)
 }
