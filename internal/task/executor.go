@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -130,6 +131,7 @@ func (q *Queue) Add(name, exportPath string, areaGran, queryGran Granularity, ta
 }
 
 func (q *Queue) cachePath(id string) string { return filepath.Join(q.cacheDir, id+".csv") }
+func (q *Queue) logPath(id string) string   { return filepath.Join(q.cacheDir, id+".log") }
 
 func (q *Queue) Pause(id string) bool {
 	q.mu.Lock()
@@ -195,10 +197,21 @@ func (q *Queue) List() []*Task {
 
 func (q *Queue) GetLogs(taskID string) []LogEntry {
 	q.mu.Lock()
-	defer q.mu.Unlock()
 	l := q.logs[taskID]
-	out := make([]LogEntry, len(l))
-	copy(out, l)
+	q.mu.Unlock()
+	if len(l) > 0 { out := make([]LogEntry, len(l)); copy(out, l); return out }
+	data, err := os.ReadFile(q.logPath(taskID))
+	if err != nil { return nil }
+	var out []LogEntry
+	for _, line := range strings.Split(string(data), "\n") {
+		if line == "" { continue }
+		parts := strings.SplitN(line, " ", 3)
+		level := "info"
+		if len(parts) >= 2 { level = strings.Trim(parts[1], "[]") }
+		msg := line
+		if len(parts) >= 3 { msg = parts[2] }
+		out = append(out, LogEntry{Time: parts[0], Message: msg, Level: level})
+	}
 	return out
 }
 
@@ -321,14 +334,28 @@ func (q *Queue) execute(t *Task) {
 
 func (q *Queue) addLog(taskID, level, msg string) {
 	q.mu.Lock()
-	defer q.mu.Unlock()
-	q.addLogUnsafe(taskID, level, msg)
+	entry := LogEntry{Time: time.Now().Format("15:04:05"), Message: msg, Level: level}
+	q.logs[taskID] = append(q.logs[taskID], entry)
+	line := entry.Time + " [" + level + "] " + msg + "\n"
+	os.MkdirAll(q.cacheDir, 0755)
+	os.WriteFile(q.logPath(taskID), []byte(line), 0644) // append via O_APPEND is unreliable for concurrent, use appendFile helper
+	q.mu.Unlock()
+	q.appendToLogFile(taskID, line)
+	q.emit("task:log", map[string]interface{}{"taskID": taskID, "entry": entry})
 }
 
 func (q *Queue) addLogUnsafe(taskID, level, msg string) {
-	q.logs[taskID] = append(q.logs[taskID], LogEntry{
-		Time: time.Now().Format("15:04:05"), Message: msg, Level: level,
-	})
+	entry := LogEntry{Time: time.Now().Format("15:04:05"), Message: msg, Level: level}
+	q.logs[taskID] = append(q.logs[taskID], entry)
+	q.appendToLogFile(taskID, entry.Time+" ["+level+"] "+msg+"\n")
+	q.emit("task:log", map[string]interface{}{"taskID": taskID, "entry": entry})
+}
+
+func (q *Queue) appendToLogFile(taskID, line string) {
+	f, err := os.OpenFile(q.logPath(taskID), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil { return }
+	defer f.Close()
+	f.WriteString(line)
 }
 
 func (q *Queue) emit(event string, data interface{}) {

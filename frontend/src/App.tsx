@@ -84,7 +84,18 @@ function App(){
 
     useEffect(()=>{if(sel){const u=tasks.find(t=>t.id===sel.id);if(u)setSel(u);}},[tasks]);
 
-    useEffect(()=>{const iv=setInterval(()=>{if(sel&&(sel.status===1||sel.status===2)){GetTaskLogs(sel.id).then(setLogs).catch(()=>{});GetTasks().then(setTasks).catch(()=>{});}},2000);return()=>clearInterval(iv);},[sel]);
+    useEffect(()=>{
+        if(!sel)return;
+        const off=EventsOn('task:log',(data:any)=>{
+            if(data&&data.taskID===sel.id&&data.entry){
+                setLogs(prev=>[...prev,data.entry]);
+            }
+        });
+        GetTaskLogs(sel.id).then(setLogs).catch(()=>{});
+        return ()=>{off();};
+    },[sel?.id]);
+
+    useEffect(()=>{const iv=setInterval(()=>{GetTasks().then(setTasks).catch(()=>{});},3000);return()=>clearInterval(iv);},[]);
 
     useEffect(()=>{if(logEnd.current)logEnd.current.scrollIntoView({behavior:'smooth'});},[logs]);
 
