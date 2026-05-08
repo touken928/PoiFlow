@@ -75,6 +75,7 @@ type Task struct {
 	Status           Status       `json:"status"`
 	Progress         string       `json:"progress"`
 	Records          int          `json:"records"`
+	CompletedTargets int          `json:"completedTargets"`
 	Error            string       `json:"error"`
 	CreatedAt        time.Time    `json:"createdAt"`
 	UpdatedAt        time.Time    `json:"updatedAt"`

@@ -115,7 +115,7 @@ func (q *Queue) Add(name, exportPath string, areaGran, queryGran Granularity, ta
 		ID: uuid.New().String(), Name: name, Queries: queries,
 		ExportPath: exportPath, AreaGranularity: areaGran,
 		QueryGranularity: queryGran, Targets: targets,
-		Status: StatusPending, Progress: "0/" + itoa(len(searchTargets)),
+		CompletedTargets: 0, Status: StatusPending, Progress: "0/" + itoa(len(searchTargets)),
 		Records: len(searchTargets), CreatedAt: time.Now(), UpdatedAt: time.Now(),
 	}
 	q.tasks = append(q.tasks, t)
@@ -231,8 +231,13 @@ func (q *Queue) execute(t *Task) {
 	}
 	var allRecords []Record
 	total := len(searchTargets)
+	startFrom := t.CompletedTargets
+	if startFrom > 0 {
+		q.addLog(t.ID, "info", fmt.Sprintf("从第 %d/%d 个目标继续", startFrom+1, total))
+	}
 
 	for i, target := range searchTargets {
+		if i < startFrom { continue }
 		func() {
 			q.mu.Lock()
 			paused := t.Status == StatusPaused
@@ -284,6 +289,7 @@ func (q *Queue) execute(t *Task) {
 
 		q.mu.Lock()
 		t.Records = len(allRecords)
+		t.CompletedTargets = i + 1
 		t.Progress = itoa(i+1) + "/" + itoa(total)
 		t.UpdatedAt = time.Now()
 		q.mu.Unlock()
