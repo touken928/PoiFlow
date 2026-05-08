@@ -2,7 +2,7 @@ import {useState, useEffect, useCallback, useRef} from 'react';
 import {
     Button, Text, Input, Dialog, DialogTrigger, DialogSurface,
     DialogTitle, DialogBody, DialogActions, DialogContent, Dropdown, Option,
-    Badge, tokens, FluentProvider, webLightTheme, ProgressBar, ToolbarButton, TabList, Tab,
+    Badge, tokens, FluentProvider, webLightTheme, ProgressBar, TabList, Tab,
 } from '@fluentui/react-components';
 import {
     Settings24Regular, Add24Regular, Play24Regular, Pause24Regular,
@@ -133,12 +133,12 @@ function App(){
             <div style={{display:'flex',justifyContent:'space-between',marginBottom:'12px',fontFamily:'sans-serif'}}>
                 <Text weight="semibold">{sel.name} - 日志</Text>
                 <div style={{display:'flex',gap:'4px'}}>
-                    {sel.status===1&&<ToolbarButton icon={<Pause24Regular/>} onClick={()=>handlePause(sel.id)}>暂停</ToolbarButton>}
-                    {sel.status===2&&<ToolbarButton icon={<Play24Regular/>} onClick={()=>handleResume(sel.id)}>继续</ToolbarButton>}
-                    {(sel.status===1||sel.status===2)&&<ToolbarButton icon={<Delete24Regular/>} onClick={()=>handleDelete(sel.id)}>删除</ToolbarButton>}
-                    {sel.status===0&&<ToolbarButton icon={<Delete24Regular/>} onClick={()=>handleCancel(sel.id)}>取消</ToolbarButton>}
-                    {(sel.status===3||sel.status===4)&&<><ToolbarButton icon={<ArrowDownload24Regular/>} onClick={()=>handleExport(sel.id)}>CSV</ToolbarButton><ToolbarButton icon={<ArrowDownload24Regular/>} onClick={()=>handleExportGeoJSON(sel.id)}>GeoJSON</ToolbarButton><ToolbarButton icon={<Delete24Regular/>} onClick={()=>handleDelete(sel.id)}>删除</ToolbarButton></>}
-                    {sel.status===5&&<ToolbarButton icon={<Delete24Regular/>} onClick={()=>handleDelete(sel.id)}>删除</ToolbarButton>}
+                    {sel.status===1&&<Button icon={<Pause24Regular/>} onClick={()=>handlePause(sel.id)}>暂停</Button>}
+                    {sel.status===2&&<Button icon={<Play24Regular/>} onClick={()=>handleResume(sel.id)}>继续</Button>}
+                    {(sel.status===1||sel.status===2)&&<Button icon={<Delete24Regular/>} onClick={()=>handleDelete(sel.id)}>删除</Button>}
+                    {sel.status===0&&<Button icon={<Delete24Regular/>} onClick={()=>handleCancel(sel.id)}>取消</Button>}
+                    {(sel.status===3||sel.status===4)&&<><Button icon={<ArrowDownload24Regular/>} onClick={()=>handleExport(sel.id)}>CSV</Button><Button icon={<ArrowDownload24Regular/>} onClick={()=>handleExportGeoJSON(sel.id)}>GeoJSON</Button><Button icon={<Delete24Regular/>} onClick={()=>handleDelete(sel.id)}>删除</Button></>}
+                    {sel.status===5&&<Button icon={<Delete24Regular/>} onClick={()=>handleDelete(sel.id)}>删除</Button>}
                 </div>
             </div>
             {logs.length===0&&<Text style={{color:tokens.colorNeutralForeground3}}>暂无日志</Text>}
