@@ -18,7 +18,11 @@ import (
 
 const akFileName = "config.yaml"
 
-func poiflowDir() string   { home, _ := os.UserHomeDir(); return filepath.Join(home, ".poiflow") }
+func poiflowDir() string {
+	if d := os.Getenv("POIFLOW_DIR"); d != "" { return d }
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".poiflow")
+}
 func cacheDir() string     { return filepath.Join(poiflowDir(), "cache") }
 func statePath() string    { return filepath.Join(poiflowDir(), "tasks.json") }
 func configPath() string   { return filepath.Join(poiflowDir(), akFileName) }
