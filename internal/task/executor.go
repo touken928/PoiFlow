@@ -322,13 +322,9 @@ func (q *Queue) execute(t *Task) {
 					UID: r.UID, Query: term.Query, Type: term.Type, TaskName: t.Name, Target: target.Name,
 				}
 				allRecords = append(allRecords, rec)
-				if !knownUIDs[r.UID] {
-					knownUIDs[r.UID] = true
-					if t.ExportPath != "" { _ = AppendRecord(t.ExportPath, rec, knownUIDs) }
-					if err := AppendRecord(q.cachePath(t.ID), rec, knownUIDs); err != nil {
-						println("  AppendRecord error:", err.Error())
-					}
-				}
+				if t.ExportPath != "" { _ = AppendRecord(t.ExportPath, rec, knownUIDs) }
+				_ = AppendRecord(q.cachePath(t.ID), rec, knownUIDs)
+				knownUIDs[r.UID] = true
 			}
 
 			q.addLog(t.ID, "info", fmt.Sprintf("完成 [%d/%d] %s | 词: %s，获取 %d 条", i+1, total, target.Name, term.Query, len(results)))
@@ -405,28 +401,16 @@ func (q *Queue) emit(event string, data interface{}) {
 
 func (q *Queue) Records(taskID string) []Record {
 	p := filepath.Join(q.cacheDir, taskID+".csv")
-	println("Records: reading from", p)
 	f, err := os.Open(p)
-	if err != nil {
-		println("  open error:", err.Error())
-		return nil
-	}
+	if err != nil { return nil }
 	defer f.Close()
 	r := csv.NewReader(f)
 	rows, err := r.ReadAll()
-	if err != nil {
-		println("  csv read error:", err.Error())
-		return nil
-	}
-	println("  rows:", len(rows))
+	if err != nil { return nil }
 	var out []Record
 	for i, row := range rows {
 		if i == 0 { continue }
-		println("  row", i, "cols:", len(row))
-		if len(row) < 13 {
-			println("    too few cols, skipping")
-			continue
-		}
+		if len(row) < 13 { continue }
 		out = append(out, Record{
 			Name: row[0], Lng: parseFloat(row[1]), Lat: parseFloat(row[2]),
 			Address: row[3], Telephone: row[4],
@@ -434,7 +418,6 @@ func (q *Queue) Records(taskID string) []Record {
 			UID: row[8], Query: row[9], Type: row[10], TaskName: row[11], Target: row[12],
 		})
 	}
-	println("  out:", len(out))
 	return out
 }
 
