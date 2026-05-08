@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/touken928/PoiFlow/internal/akpool"
 	"github.com/touken928/PoiFlow/internal/akstore"
@@ -36,15 +35,6 @@ func (a *App) startup(ctx context.Context) { a.ctx = ctx }
 func (a *App) reloadAKs() {
 	entries, err := akstore.Load(akFileName)
 	if err != nil { println("load aks failed:", err.Error()) }
-	if len(entries) == 0 {
-		env := os.Getenv("BAIDU_AK")
-		if env != "" {
-			aks := splitCSV(env)
-			a.akPool = akpool.New(aks, nil)
-			_ = akstore.Save(akFileName, aks)
-			return
-		}
-	}
 	if a.akPool == nil {
 		a.akPool = akpool.New(entries, nil)
 	} else {
@@ -173,14 +163,4 @@ func (a *App) ExportTaskDialog(taskID string) string {
 
 	if err := exporter.ToCSV(records, path); err != nil { return "导出失败: " + err.Error() }
 	return "成功导出至 " + path
-}
-
-func splitCSV(s string) []string {
-	var out []string
-	start := 0
-	for i := 0; i < len(s); i++ {
-		if s[i] == ',' { if i > start { out = append(out, s[start:i]) }; start = i + 1 }
-	}
-	if start < len(s) { out = append(out, s[start:]) }
-	return out
 }
