@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"os"
 
-	"PoiFlow/internal/akpool"
-	"PoiFlow/internal/akstore"
-	"PoiFlow/internal/exporter"
-	"PoiFlow/internal/task"
-	"PoiFlow/pkg/baidu"
-	"PoiFlow/pkg/division"
+	"github.com/touken928/PoiFlow/internal/akpool"
+	"github.com/touken928/PoiFlow/internal/akstore"
+	"github.com/touken928/PoiFlow/internal/exporter"
+	"github.com/touken928/PoiFlow/internal/task"
+	"github.com/touken928/PoiFlow/pkg/baidu"
+	"github.com/touken928/PoiFlow/pkg/division"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )

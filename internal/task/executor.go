@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"PoiFlow/internal/akpool"
-	"PoiFlow/pkg/baidu"
-	"PoiFlow/pkg/division"
+	"github.com/touken928/PoiFlow/internal/akpool"
+	"github.com/touken928/PoiFlow/pkg/baidu"
+	"github.com/touken928/PoiFlow/pkg/division"
 )
 
 const maxTotal = 150

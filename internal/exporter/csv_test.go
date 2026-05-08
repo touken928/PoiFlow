@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"PoiFlow/internal/task"
+	"github.com/touken928/PoiFlow/internal/task"
 )
 
 func TestToCSV(t *testing.T) {

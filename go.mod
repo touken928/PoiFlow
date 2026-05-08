@@ -1,4 +1,4 @@
-module PoiFlow
+module github.com/touken928/PoiFlow
 
 go 1.23.0
 
