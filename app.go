@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/joho/godotenv"
 	"github.com/touken928/PoiFlow/internal/akpool"
 	"github.com/touken928/PoiFlow/internal/akstore"
 	"github.com/touken928/PoiFlow/internal/exporter"
@@ -34,6 +35,7 @@ type App struct {
 }
 
 func NewApp() *App {
+	godotenv.Load()
 	a := &App{}
 	a.reloadAKs()
 	executor := task.NewExecutor(a.akPool)
