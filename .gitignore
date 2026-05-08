@@ -2,7 +2,7 @@ config.yaml
 build/bin
 node_modules
 frontend/dist/*
-!frontend/dist/.gitkeep
+!frontend/dist/placeholder
 data/
 .DS_Store
 *.md5
