@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/touken928/PoiFlow/internal/akpool"
 	"github.com/touken928/PoiFlow/internal/akstore"
@@ -15,6 +17,12 @@ import (
 )
 
 const akFileName = "config.yaml"
+
+func configPath() string {
+	home, err := os.UserHomeDir()
+	if err != nil { return akFileName }
+	return filepath.Join(home, ".poiflow", akFileName)
+}
 
 type App struct {
 	ctx    context.Context
@@ -33,7 +41,7 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) { a.ctx = ctx }
 
 func (a *App) reloadAKs() {
-	entries, err := akstore.Load(akFileName)
+	entries, err := akstore.Load(configPath())
 	if err != nil { println("load aks failed:", err.Error()) }
 	keys := make([]string, len(entries))
 	for i, e := range entries { keys[i] = e.Key }
@@ -106,7 +114,7 @@ type AKInfo struct {
 
 func (a *App) GetAKItems() []AKInfo {
 	items := a.akPool.Items()
-	entries, _ := akstore.Load(akFileName)
+	entries, _ := akstore.Load(configPath())
 	nameMap := make(map[string]string, len(entries))
 	for _, e := range entries { nameMap[e.Key] = e.Name }
 
@@ -121,26 +129,26 @@ func (a *App) ResetAKPool()   { a.akPool.ResetAll() }
 
 func (a *App) AddAK(name, key string) string {
 	if key == "" { return "AK不能为空" }
-	entries, err := akstore.Load(akFileName)
+	entries, err := akstore.Load(configPath())
 	if err != nil { return "读取配置失败: " + err.Error() }
 	for _, e := range entries {
 		if e.Key == key { return "AK已存在" }
 	}
 	entries = append(entries, akstore.Entry{Name: name, Key: key})
-	if err := akstore.Save(akFileName, entries); err != nil { return "保存失败: " + err.Error() }
+	if err := akstore.Save(configPath(), entries); err != nil { return "保存失败: " + err.Error() }
 	a.reloadAKs()
 	return ""
 }
 
 func (a *App) RemoveAK(key string) string {
-	entries, err := akstore.Load(akFileName)
+	entries, err := akstore.Load(configPath())
 	if err != nil { return "读取配置失败: " + err.Error() }
 	filtered := make([]akstore.Entry, 0, len(entries))
 	for _, e := range entries {
 		if e.Key != key { filtered = append(filtered, e) }
 	}
 	if len(filtered) == len(entries) { return "AK不存在" }
-	if err := akstore.Save(akFileName, filtered); err != nil { return "保存失败: " + err.Error() }
+	if err := akstore.Save(configPath(), filtered); err != nil { return "保存失败: " + err.Error() }
 	a.reloadAKs()
 	return ""
 }
