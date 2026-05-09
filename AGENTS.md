@@ -38,7 +38,7 @@ frontend/src/App.tsx     # Fluent UI 前端（唯一前端组件）
 - 重启后运行中任务自动转为暂停
 - `POIFLOW_DIR` 环境变量覆盖数据目录（默认 `~/.poiflow`）。`.env` 文件自动加载
 
-## Git 工作流规范
+## Git
 
 ```
 <type>: <简短描述>
@@ -47,13 +47,12 @@ type: `feat` `fix` `refactor` `docs` `chore` `ci` `style`
 
 提交前检查：
 1. `go test ./internal/... ./pkg/... -v`
-2. `go build ./...`
-3. `cd frontend && npx tsc --noEmit`（修改前端时）
+2. `cd frontend && npx tsc --noEmit`（修改前端时）
+3. `wails build`
 4. **人工复核** — 所有 commit 必须人工确认无误
 
 Push 规则：
 - **只有人类可以 push**。禁止 AI 自动执行 `git push`
 - Push 前确认：人工复核通过、无调试代码、无敏感文件误提交
 
-分支命名：`feat/<desc>` / `fix/<desc>` / `chore/<desc>`
-Tag 规范：`v<major>.<minor>.<patch>`，如 `v0.2.1`
+Tag 规范：`v<major>.<minor>.<patch>`
