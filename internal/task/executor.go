@@ -245,16 +245,10 @@ func (q *Queue) processLoop() {
 	for {
 		q.mu.Lock()
 		var current *Task
-		hasPaused := false
 		for _, t := range q.tasks {
-			if t.Status == StatusPending && current == nil { current = t }
-			if t.Status == StatusPaused { hasPaused = true }
+			if t.Status == StatusPending { current = t; break }
 		}
-		if current == nil || hasPaused {
-			if hasPaused { q.running = false }
-			q.mu.Unlock()
-			return
-		}
+		if current == nil { q.running = false; q.mu.Unlock(); return }
 		q.mu.Unlock()
 		q.execute(current)
 	}
