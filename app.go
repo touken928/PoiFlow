@@ -57,11 +57,12 @@ func (a *App) reloadAKs() {
 	entries, err := store.LoadAKs(configPath())
 	if err != nil { println("load aks failed:", err.Error()) }
 	keys := make([]string, len(entries))
-	for i, e := range entries { keys[i] = e.Key }
+	names := make([]string, len(entries))
+	for i, e := range entries { keys[i] = e.Key; names[i] = e.Name }
 	if a.akPool == nil {
-		a.akPool = akpool.New(keys, nil)
+		a.akPool = akpool.NewWithNames(keys, names, nil)
 	} else {
-		a.akPool.Rebuild(keys, nil)
+		a.akPool.RebuildWithNames(keys, names, nil)
 	}
 }
 

@@ -11,11 +11,12 @@ const minInterval = time.Second / 3
 func DefaultLimit() int { return defaultLimit }
 
 type Item struct {
-	AK       string `json:"ak"`
-	Used     int    `json:"used"`
-	Limit    int    `json:"limit"`
-	Failed   bool   `json:"failed"`
-	FailMsg  string `json:"failMsg"`
+	Name    string `json:"name"`
+	AK      string `json:"ak"`
+	Used    int    `json:"used"`
+	Limit   int    `json:"limit"`
+	Failed  bool   `json:"failed"`
+	FailMsg string `json:"failMsg"`
 	lastUsed time.Time
 }
 
@@ -29,23 +30,32 @@ func New(aks []string, limits []int) *Pool {
 	p := &Pool{}
 	for i, ak := range aks {
 		item := &Item{AK: ak, Limit: defaultLimit}
-		if i < len(limits) && limits[i] > 0 {
-			item.Limit = limits[i]
-		}
+		if i < len(limits) && limits[i] > 0 { item.Limit = limits[i] }
 		p.items = append(p.items, item)
 	}
 	return p
 }
 
-func (p *Pool) Rebuild(aks []string, limits []int) {
+func NewWithNames(aks []string, names []string, limits []int) *Pool {
+	p := &Pool{}
+	for i, ak := range aks {
+		item := &Item{AK: ak, Name: ak, Limit: defaultLimit}
+		if i < len(names) && names[i] != "" { item.Name = names[i] }
+		if i < len(limits) && limits[i] > 0 { item.Limit = limits[i] }
+		p.items = append(p.items, item)
+	}
+	return p
+}
+
+func (p *Pool) RebuildWithNames(aks []string, names []string, limits []int) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	items := make([]*Item, len(aks))
 	for i, ak := range aks {
-		items[i] = &Item{AK: ak, Limit: defaultLimit}
-		if i < len(limits) && limits[i] > 0 {
-			items[i].Limit = limits[i]
-		}
+		item := &Item{AK: ak, Name: ak, Limit: defaultLimit}
+		if i < len(names) && names[i] != "" { item.Name = names[i] }
+		if i < len(limits) && limits[i] > 0 { item.Limit = limits[i] }
+		items[i] = item
 	}
 	p.items = items
 	p.cursor = 0
@@ -140,8 +150,19 @@ func (p *Pool) AliveCount() int {
 	return n
 }
 
+func (p *Pool) Name(ak string) string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	for _, item := range p.items {
+		if item.AK == ak { return item.Name }
+	}
+	return ak[:minInt(8, len(ak))]
+}
+
 func NeedsRotate(status int) bool {
 	return status == 3 || status == 4 || status == 5 ||
 		status == 200 || status == 201 || status == 202 ||
 		status == 301 || status == 302
 }
+
+func minInt(a, b int) int { if a < b { return a }; return b }

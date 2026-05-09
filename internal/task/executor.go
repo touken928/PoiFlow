@@ -41,7 +41,7 @@ func (e *Executor) SearchTarget(query, poiType, region, taskID string) ([]baidu.
 
 	for pageNum := 0; ; pageNum++ {
 		ak := e.pool.Next()
-		e.Logf(taskID, "info", "使用 AK: "+ak[:minInt(8, len(ak))]+"...")
+		e.Logf(taskID, "info", "使用 AK: "+e.pool.Name(ak))
 		e.pool.Throttle(ak)
 		client := baidu.NewClient(ak)
 		resp, err := client.RegionSearch(&baidu.RegionRequest{
@@ -52,7 +52,7 @@ func (e *Executor) SearchTarget(query, poiType, region, taskID string) ([]baidu.
 		if err != nil {
 			if apiErr, ok := err.(*baidu.APIError); ok && akpool.NeedsRotate(apiErr.Status) {
 				e.pool.MarkFailed(ak, apiErr.Error())
-				e.Logf(taskID, "error", "AK "+ak[:minInt(8, len(ak))]+"... 失效: "+apiErr.Error())
+				e.Logf(taskID, "error", "AK "+e.pool.Name(ak)+" 失效: "+apiErr.Error())
 				retries++
 				if retries >= maxRetries {
 					return nil, fmt.Errorf("所有AK均已失效")
