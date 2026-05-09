@@ -30,7 +30,7 @@ func NewExecutor(pool *akpool.Pool) *Executor {
 	return &Executor{pool: pool, Logf: func(_, _, _ string) {}}
 }
 
-func (e *Executor) SearchTarget(query, poiType, region string) ([]baidu.POIResult, error) {
+func (e *Executor) SearchTarget(query, poiType, region, taskID string) ([]baidu.POIResult, error) {
 	regionLimit := true
 	scope := baidu.ScopeBasic
 	pageSize := defaultPageSize
@@ -41,7 +41,7 @@ func (e *Executor) SearchTarget(query, poiType, region string) ([]baidu.POIResul
 
 	for pageNum := 0; ; pageNum++ {
 		ak := e.pool.Next()
-		e.Logf("", "info", "使用 AK: "+ak[:minInt(8, len(ak))]+"...")
+		e.Logf(taskID, "info", "使用 AK: "+ak[:minInt(8, len(ak))]+"...")
 		e.pool.Throttle(ak)
 		client := baidu.NewClient(ak)
 		resp, err := client.RegionSearch(&baidu.RegionRequest{
@@ -52,7 +52,7 @@ func (e *Executor) SearchTarget(query, poiType, region string) ([]baidu.POIResul
 		if err != nil {
 			if apiErr, ok := err.(*baidu.APIError); ok && akpool.NeedsRotate(apiErr.Status) {
 				e.pool.MarkFailed(ak, apiErr.Error())
-				e.Logf("", "error", "AK "+ak[:minInt(8, len(ak))]+"... 失效: "+apiErr.Error())
+				e.Logf(taskID, "error", "AK "+ak[:minInt(8, len(ak))]+"... 失效: "+apiErr.Error())
 				retries++
 				if retries >= maxRetries {
 					return nil, fmt.Errorf("所有AK均已失效")
@@ -115,14 +115,14 @@ type Queue struct {
 
 func NewQueue(executor *Executor, onEvent EventHandler, cacheDir, statePath string) *Queue {
 	os.MkdirAll(cacheDir, 0755)
-	executor.Logf = func(_, level, msg string) {
-		// executor doesn't have taskID, logs are emitted at execute level instead
-	}
 	q := &Queue{
 		executor: executor, onEvent: onEvent,
 		records: make(map[string][]Record),
 		logs:    make(map[string][]LogEntry),
 		cacheDir: cacheDir, statePath: statePath,
+	}
+	executor.Logf = func(taskID, level, msg string) {
+		q.addLog(taskID, level, msg)
 	}
 	q.loadState()
 	return q
@@ -295,7 +295,7 @@ func (q *Queue) execute(t *Task) {
 		for qi, term := range t.Queries {
 			q.addLog(t.ID, "info", fmt.Sprintf("搜索 [%d/%d] %s | 词: %s", i+1, total, target.Name, term.Query))
 
-			results, err := q.executor.SearchTarget(term.Query, term.Type, targetRegion(target))
+			results, err := q.executor.SearchTarget(term.Query, term.Type, targetRegion(target), t.ID)
 			if err != nil {
 				q.mu.Lock()
 				t.Error = err.Error()
