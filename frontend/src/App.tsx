@@ -49,7 +49,9 @@ const css = st({
     footer:{padding:'10px 16px',borderTop:`1px solid ${tokens.colorNeutralStroke1}`,display:'flex',alignItems:'center',cursor:'pointer',color:tokens.colorNeutralForeground2},
     main:{flex:'1',display:'flex',flexDirection:'column',overflow:'hidden'},
     empty:{flex:'1',display:'flex',alignItems:'center',justifyContent:'center',color:tokens.colorNeutralForeground3,flexDirection:'column',gap:'8px'},
-    logPanel:{flex:'1',overflowY:'auto',padding:'20px',fontFamily:'monospace',fontSize:'13px',lineHeight:'1.7'},
+    logPanel:{flex:'1',display:'flex',flexDirection:'column',overflow:'hidden'},
+    logHeader:{padding:'20px 20px 12px',fontFamily:'sans-serif',borderBottom:`1px solid ${tokens.colorNeutralStroke2}`,background:tokens.colorNeutralBackground1,flexShrink:0},
+    logBody:{flex:'1',overflowY:'auto',padding:'0 20px 20px',fontFamily:'monospace',fontSize:'13px',lineHeight:'1.7'},
     form:{display:'flex',flexDirection:'column',gap:'14px',minWidth:'460px'},
     targets:{border:`1px solid ${tokens.colorNeutralStroke2}`,borderRadius:'8px',padding:'12px',maxHeight:'200px',overflowY:'auto'},
 });
@@ -138,24 +140,28 @@ function App(){
 
     const mainView=sel?(
         <div style={css.logPanel}>
-            <div style={{display:'flex',justifyContent:'space-between',marginBottom:'12px',fontFamily:'sans-serif'}}>
-                <Text weight="semibold">{sel.name} - 日志</Text>
-                <div style={{display:'flex',gap:'4px'}}>
-                    {sel.status===1&&<Button icon={<Pause24Regular/>} onClick={()=>handlePause(sel.id)}>暂停</Button>}
-                    {sel.status===2&&<Button icon={<Play24Regular/>} onClick={()=>handleResume(sel.id)}>继续</Button>}
-                    {(sel.status===1||sel.status===2)&&<Button icon={<Delete24Regular/>} onClick={()=>handleDelete(sel.id)}>删除</Button>}
-                    {sel.status===0&&<Button icon={<Delete24Regular/>} onClick={()=>handleCancel(sel.id)}>取消</Button>}
-                    {(sel.status===3||sel.status===4)&&<><Button icon={<ArrowDownload24Regular/>} onClick={()=>handleExport(sel.id)}>CSV</Button><Button icon={<ArrowDownload24Regular/>} onClick={()=>handleExportGeoJSON(sel.id)}>GeoJSON</Button><Button icon={<Delete24Regular/>} onClick={()=>handleDelete(sel.id)}>删除</Button></>}
-                    {sel.status===5&&<Button icon={<Delete24Regular/>} onClick={()=>handleDelete(sel.id)}>删除</Button>}
+            <div style={css.logHeader}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                    <Text weight="semibold">{sel.name} - 日志</Text>
+                    <div style={{display:'flex',gap:'4px',flexShrink:0}}>
+                        {sel.status===1&&<Button icon={<Pause24Regular/>} onClick={()=>handlePause(sel.id)}>暂停</Button>}
+                        {sel.status===2&&<Button icon={<Play24Regular/>} onClick={()=>handleResume(sel.id)}>继续</Button>}
+                        {(sel.status===1||sel.status===2)&&<Button icon={<Delete24Regular/>} onClick={()=>handleDelete(sel.id)}>删除</Button>}
+                        {sel.status===0&&<Button icon={<Delete24Regular/>} onClick={()=>handleCancel(sel.id)}>取消</Button>}
+                        {(sel.status===3||sel.status===4)&&<><Button icon={<ArrowDownload24Regular/>} onClick={()=>handleExport(sel.id)}>CSV</Button><Button icon={<ArrowDownload24Regular/>} onClick={()=>handleExportGeoJSON(sel.id)}>GeoJSON</Button><Button icon={<Delete24Regular/>} onClick={()=>handleDelete(sel.id)}>删除</Button></>}
+                        {sel.status===5&&<Button icon={<Delete24Regular/>} onClick={()=>handleDelete(sel.id)}>删除</Button>}
+                    </div>
                 </div>
             </div>
-            {logs.length===0&&<Text style={{color:tokens.colorNeutralForeground3}}>暂无日志</Text>}
-            {logs.map((l,i)=>(
-                <div key={i} style={logLevelStyle(l.level)}>
-                    <span style={{color:tokens.colorNeutralForeground3}}>[{l.time}]</span> {l.message}
-                </div>
-            ))}
-            <div ref={logEnd}/>
+            <div style={css.logBody}>
+                {logs.length===0&&<Text style={{color:tokens.colorNeutralForeground3}}>暂无日志</Text>}
+                {logs.map((l,i)=>(
+                    <div key={i} style={logLevelStyle(l.level)}>
+                        <span style={{color:tokens.colorNeutralForeground3}}>[{l.time}]</span> {l.message}
+                    </div>
+                ))}
+                <div ref={logEnd}/>
+            </div>
         </div>
     ):(
         <div style={css.empty}>
