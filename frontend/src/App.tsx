@@ -36,7 +36,7 @@ const st = (styles: Record<string,any>) => styles;
 
 const css = st({
     root:{height:'100vh',display:'flex',background:tokens.colorNeutralBackground1},
-    sidebar:{width:'300px',display:'flex',flexDirection:'column',borderRight:`1px solid ${tokens.colorNeutralStroke1}`,background:tokens.colorNeutralBackground2},
+    sidebar:{display:'flex',flexDirection:'column',borderRight:`1px solid ${tokens.colorNeutralStroke1}`,background:tokens.colorNeutralBackground2},
     brand:{height:'56px',padding:'0 20px',fontSize:'20px',fontWeight:'700',borderBottom:`1px solid ${tokens.colorNeutralStroke2}`,display:'flex',alignItems:'center',justifyContent:'space-between',gap:'8px'},
     brandDot:{width:'10px',height:'10px',borderRadius:'50%',background:tokens.colorBrandForeground1,display:'inline-block'},
     listHeader:{height:'56px',display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 20px',borderBottom:`1px solid ${tokens.colorNeutralStroke1}`},
@@ -81,8 +81,18 @@ function App(){
     const [settingsTab,setSettingsTab]=useState('ak');
     const [appVersion,setAppVersion]=useState('');
     const [exportFields,setExportFields]=useState<string[]>([]);
+    const [sidebarWidth,setSidebarWidth]=useState(300);
+    const dragging=useRef(false);
     const allFields=['name','address','telephone','province','city','area','uid','query','type','taskName','target'];
     const fieldLabels:Record<string,string>={name:'名称',address:'地址',telephone:'电话',province:'省份',city:'城市',area:'区县',uid:'UID',query:'搜索词',type:'分类',taskName:'任务名',target:'搜索目标'};
+
+    useEffect(()=>{
+        const onMove=(e:MouseEvent)=>{if(dragging.current){setSidebarWidth(Math.max(240,Math.min(600,e.clientX)));}};
+        const onUp=()=>{dragging.current=false;document.body.style.cursor='';document.body.style.userSelect='';};
+        window.addEventListener('mousemove',onMove);
+        window.addEventListener('mouseup',onUp);
+        return ()=>{window.removeEventListener('mousemove',onMove);window.removeEventListener('mouseup',onUp);};
+    },[]);
 
     useEffect(()=>{GetExportConfig().then(c=>setExportFields(c.Fields||allFields)).catch(()=>{});},[]);
 
@@ -172,7 +182,7 @@ function App(){
     return(
         <FluentProvider theme={webLightTheme}>
             <div style={css.root}>
-                <div style={css.sidebar}>
+                <div style={{...css.sidebar, width: sidebarWidth, flexShrink: 0}}>
                     <div style={css.brand}>
                         <span>
                             <span style={{...css.brandDot, marginRight: '8px'}}/>
@@ -199,6 +209,12 @@ function App(){
                         <Text>Settings</Text>
                     </div>
                 </div>
+                <div
+                    style={{width:'2px',cursor:'col-resize',background:tokens.colorNeutralStroke2,flexShrink:0}}
+                    onMouseDown={()=>{dragging.current=true;document.body.style.cursor='col-resize';document.body.style.userSelect='none';}}
+                    onMouseEnter={e=>{e.currentTarget.style.background=tokens.colorBrandStroke1 as string}}
+                    onMouseLeave={e=>{e.currentTarget.style.background=tokens.colorNeutralStroke2 as string}}
+                />
                 <div style={css.main}>{mainView}</div>
             </div>
 
