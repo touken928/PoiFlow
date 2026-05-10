@@ -6,18 +6,20 @@ import (
 )
 
 const defaultLimit = 5000
-const minInterval = time.Second / 3
+const tokenRate = 2.0 // tokens per second
+const tokenBurst = 2.0 // max tokens
 
 func DefaultLimit() int { return defaultLimit }
 
 type Item struct {
-	Name    string `json:"name"`
-	AK      string `json:"ak"`
-	Used    int    `json:"used"`
-	Limit   int    `json:"limit"`
-	Failed  bool   `json:"failed"`
-	FailMsg string `json:"failMsg"`
-	lastUsed time.Time
+	Name     string `json:"name"`
+	AK       string `json:"ak"`
+	Used     int    `json:"used"`
+	Limit    int    `json:"limit"`
+	Failed   bool   `json:"failed"`
+	FailMsg  string `json:"failMsg"`
+	tokens   float64
+	lastFill time.Time
 }
 
 type Pool struct {
@@ -82,19 +84,28 @@ func (p *Pool) Throttle(ak string) {
 	p.mu.Lock()
 	for _, item := range p.items {
 		if item.AK == ak {
-			elapsed := time.Since(item.lastUsed)
-			if elapsed < minInterval {
+			now := time.Now()
+			if !item.lastFill.IsZero() {
+				item.tokens = minFloat(tokenBurst, item.tokens+now.Sub(item.lastFill).Seconds()*tokenRate)
+			} else {
+				item.tokens = tokenBurst
+			}
+			item.lastFill = now
+			if item.tokens >= 1 {
+				item.tokens--
 				p.mu.Unlock()
-				time.Sleep(minInterval - elapsed)
 				return
 			}
-			item.lastUsed = time.Now()
+			need := time.Duration((1-item.tokens)/tokenRate*float64(time.Second))
 			p.mu.Unlock()
+			time.Sleep(need)
 			return
 		}
 	}
 	p.mu.Unlock()
 }
+
+func minFloat(a, b float64) float64 { if a < b { return a }; return b }
 
 func (p *Pool) MarkFailed(ak, msg string) {
 	p.mu.Lock()
