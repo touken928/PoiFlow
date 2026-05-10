@@ -37,9 +37,9 @@ const st = (styles: Record<string,any>) => styles;
 const css = st({
     root:{height:'100vh',display:'flex',background:tokens.colorNeutralBackground1},
     sidebar:{width:'300px',display:'flex',flexDirection:'column',borderRight:`1px solid ${tokens.colorNeutralStroke1}`,background:tokens.colorNeutralBackground2},
-    brand:{padding:'12px 20px',fontSize:'20px',fontWeight:'700',borderBottom:`1px solid ${tokens.colorNeutralStroke2}`,display:'flex',alignItems:'center',gap:'8px'},
-    brandDot:{width:'10px',height:'10px',borderRadius:'50%',background:tokens.colorBrandForeground1,display:'inlineBlock'},
-    listHeader:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 20px',borderBottom:`1px solid ${tokens.colorNeutralStroke1}`},
+    brand:{height:'56px',padding:'0 20px',fontSize:'20px',fontWeight:'700',borderBottom:`1px solid ${tokens.colorNeutralStroke2}`,display:'flex',alignItems:'center',justifyContent:'space-between',gap:'8px'},
+    brandDot:{width:'10px',height:'10px',borderRadius:'50%',background:tokens.colorBrandForeground1,display:'inline-block'},
+    listHeader:{height:'56px',display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 20px',borderBottom:`1px solid ${tokens.colorNeutralStroke1}`},
     listBody:{flex:'1',overflowY:'auto',padding:'8px'},
     taskCard:{padding:'12px',marginBottom:'8px',borderRadius:'8px',border:`1px solid ${tokens.colorNeutralStroke2}`,background:tokens.colorNeutralBackground1,cursor:'pointer'},
     taskCardSel:{border:`2px solid ${tokens.colorBrandStroke1}`},
@@ -50,7 +50,7 @@ const css = st({
     main:{flex:'1',display:'flex',flexDirection:'column',overflow:'hidden'},
     empty:{flex:'1',display:'flex',alignItems:'center',justifyContent:'center',color:tokens.colorNeutralForeground3,flexDirection:'column',gap:'8px'},
     logPanel:{flex:'1',display:'flex',flexDirection:'column',overflow:'hidden'},
-    logHeader:{padding:'12px 20px',fontFamily:'sans-serif',borderBottom:`1px solid ${tokens.colorNeutralStroke2}`,background:tokens.colorNeutralBackground1,flexShrink:0},
+    logHeader:{height:'56px',padding:'0 20px',fontFamily:'sans-serif',borderBottom:`1px solid ${tokens.colorNeutralStroke2}`,background:tokens.colorNeutralBackground1,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between'},
     logBody:{flex:'1',overflowY:'auto',padding:'0 20px 20px',fontFamily:'monospace',fontSize:'13px',lineHeight:'1.7'},
     form:{display:'flex',flexDirection:'column',gap:'14px',minWidth:'460px'},
     targets:{border:`1px solid ${tokens.colorNeutralStroke2}`,borderRadius:'8px',padding:'12px',maxHeight:'200px',overflowY:'auto'},
@@ -141,16 +141,14 @@ function App(){
     const mainView=sel?(
         <div style={css.logPanel}>
             <div style={css.logHeader}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                    <Text weight="semibold">{sel.name} - 日志</Text>
-                    <div style={{display:'flex',gap:'4px',flexShrink:0}}>
+                <Text weight="semibold">{sel.name} - 日志</Text>
+                <div style={{display:'flex',gap:'4px',flexShrink:0}}>
                         {sel.status===1&&<Button icon={<Pause24Regular/>} onClick={()=>handlePause(sel.id)}>暂停</Button>}
                         {sel.status===2&&<Button icon={<Play24Regular/>} onClick={()=>handleResume(sel.id)}>继续</Button>}
                         {(sel.status===1||sel.status===2)&&<Button icon={<Delete24Regular/>} onClick={()=>handleDelete(sel.id)}>删除</Button>}
                         {sel.status===0&&<Button icon={<Delete24Regular/>} onClick={()=>handleCancel(sel.id)}>取消</Button>}
                         {(sel.status===3||sel.status===4)&&<><Button icon={<ArrowDownload24Regular/>} onClick={()=>handleExport(sel.id)}>CSV</Button><Button icon={<ArrowDownload24Regular/>} onClick={()=>handleExportGeoJSON(sel.id)}>GeoJSON</Button><Button icon={<Delete24Regular/>} onClick={()=>handleDelete(sel.id)}>删除</Button></>}
                         {sel.status===5&&<Button icon={<Delete24Regular/>} onClick={()=>handleDelete(sel.id)}>删除</Button>}
-                    </div>
                 </div>
             </div>
             <div style={css.logBody}>
@@ -174,9 +172,11 @@ function App(){
         <FluentProvider theme={webLightTheme}>
             <div style={css.root}>
                 <div style={css.sidebar}>
-                    <div style={css.brand}><span style={css.brandDot}/> PoiFlow</div>
-                    <div style={css.listHeader}>
-                        <Text weight="semibold">任务列表</Text>
+                    <div style={css.brand}>
+                        <span>
+                            <span style={{...css.brandDot, marginRight: '8px'}}/>
+                            PoiFlow
+                        </span>
                         <Button appearance="subtle" icon={<Add24Regular/>} size="small" onClick={()=>setOpenNew(true)}>新建</Button>
                     </div>
                     <div style={css.listBody}>
