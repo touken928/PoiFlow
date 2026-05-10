@@ -106,7 +106,7 @@ function App(){
 
     useEffect(()=>{if(logEnd.current)logEnd.current.scrollIntoView({behavior:'smooth'});},[logs]);
 
-    useEffect(()=>{if(nTargets.length>0)ExpandCount(nAreaGran,nQueryGran,nTargets).then(setExpandCount).catch(()=>setExpandCount(0));else setExpandCount(0);},[nTargets,nAreaGran,nQueryGran]);
+    useEffect(()=>{if(nTargets.length>0)ExpandCount(nAreaGran,nQueryGran,nTargets).then(c=>setExpandCount(c*nQueries.filter(q=>q.query.trim()).length||c)).catch(()=>setExpandCount(0));else setExpandCount(0);},[nTargets,nAreaGran,nQueryGran,nQueries]);
 
     const onProvChange=(v:string)=>{setNProv(v);setNCity('');setCities([]);setCounties([]);if(v)GetCities(v).then(setCities).catch(()=>{});};
     const onCityChange=(v:string)=>{setNCity(v);setCounties([]);if(v&&nProv)GetCounties(nProv,v).then(setCounties).catch(()=>{});};
