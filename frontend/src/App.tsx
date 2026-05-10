@@ -50,7 +50,7 @@ const css = st({
     main:{flex:'1',display:'flex',flexDirection:'column',overflow:'hidden'},
     empty:{flex:'1',display:'flex',alignItems:'center',justifyContent:'center',color:tokens.colorNeutralForeground3,flexDirection:'column',gap:'8px'},
     logPanel:{flex:'1',display:'flex',flexDirection:'column',overflow:'hidden'},
-    logHeader:{padding:'20px 20px 12px',fontFamily:'sans-serif',borderBottom:`1px solid ${tokens.colorNeutralStroke2}`,background:tokens.colorNeutralBackground1,flexShrink:0},
+    logHeader:{padding:'12px 16px',fontFamily:'sans-serif',borderBottom:`1px solid ${tokens.colorNeutralStroke2}`,background:tokens.colorNeutralBackground1,flexShrink:0},
     logBody:{flex:'1',overflowY:'auto',padding:'0 20px 20px',fontFamily:'monospace',fontSize:'13px',lineHeight:'1.7'},
     form:{display:'flex',flexDirection:'column',gap:'14px',minWidth:'460px'},
     targets:{border:`1px solid ${tokens.colorNeutralStroke2}`,borderRadius:'8px',padding:'12px',maxHeight:'200px',overflowY:'auto'},
