@@ -13,7 +13,7 @@ import {
     GetProvinces, GetCities, GetCounties, CreateTask, GetTasks,
     CancelTask, PauseTask, ResumeTask, DeleteTask, GetAKItems,
     ResetAKPool, AddAK, RemoveAK, GetTaskLogs, ExportTaskDialog, ExportTaskGeoJSON, ExpandCount,
-    GetExportConfig, SetExportConfig,
+    GetExportConfig, SetExportConfig, GetVersion,
 } from '../wailsjs/go/main/App';
 import {EventsOn} from '../wailsjs/runtime/runtime';
 
@@ -79,6 +79,7 @@ function App(){
     const [newAkName,setNewAkName]=useState('');
     const [newAkKey,setNewAkKey]=useState('');
     const [settingsTab,setSettingsTab]=useState('ak');
+    const [appVersion,setAppVersion]=useState('');
     const [exportFields,setExportFields]=useState<string[]>([]);
     const allFields=['name','address','telephone','province','city','area','uid','query','type','taskName','target'];
     const fieldLabels:Record<string,string>={name:'名称',address:'地址',telephone:'电话',province:'省份',city:'城市',area:'区县',uid:'UID',query:'搜索词',type:'分类',taskName:'任务名',target:'搜索目标'};
@@ -87,7 +88,7 @@ function App(){
 
     const loadAll=useCallback(()=>{GetTasks().then(setTasks).catch(()=>{});GetAKItems().then(setAkItems).catch(()=>{});},[]);
 
-    useEffect(()=>{GetProvinces().then(setProvinces).catch(()=>{});loadAll();const c=[EventsOn('task:added',loadAll),EventsOn('task:updated',loadAll),EventsOn('task:completed',loadAll),EventsOn('task:failed',loadAll),EventsOn('task:deleted',loadAll)];return()=>{c.forEach(f=>f());};},[loadAll]);
+    useEffect(()=>{GetProvinces().then(setProvinces).catch(()=>{});GetVersion().then(setAppVersion).catch(()=>{});loadAll();const c=[EventsOn('task:added',loadAll),EventsOn('task:updated',loadAll),EventsOn('task:completed',loadAll),EventsOn('task:failed',loadAll),EventsOn('task:deleted',loadAll)];return()=>{c.forEach(f=>f());};},[loadAll]);
 
     useEffect(()=>{if(sel){const u=tasks.find(t=>t.id===sel.id);if(u)setSel(u);}},[tasks]);
 
@@ -297,6 +298,7 @@ function App(){
                             </div>}
                             {settingsTab==='about'&&<div style={{display:'flex',flexDirection:'column',gap:'12px'}}>
                                 <Text weight="semibold" size={400}>PoiFlow</Text>
+                                <Text size={200}>版本: {appVersion || 'dev'}</Text>
                                 <Text size={200}>百度POI数据采集桌面工具</Text>
                                 <div style={{height:'1px',background:tokens.colorNeutralStroke2,margin:'4px 0'}}/>
                                 <Text weight="semibold">作者</Text>

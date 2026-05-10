@@ -19,6 +19,10 @@ import (
 
 const akFileName = "config.yaml"
 
+var Version = "dev"
+
+func (a *App) GetVersion() string { return Version }
+
 func poiflowDir() string {
 	if d := os.Getenv("POIFLOW_DIR"); d != "" { return d }
 	home, _ := os.UserHomeDir()

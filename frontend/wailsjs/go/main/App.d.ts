@@ -34,6 +34,8 @@ export function GetTaskLogs(arg1:string):Promise<Array<task.LogEntry>>;
 
 export function GetTasks():Promise<Array<task.Task>>;
 
+export function GetVersion():Promise<string>;
+
 export function Greet(arg1:string):Promise<string>;
 
 export function PauseTask(arg1:string):Promise<boolean>;

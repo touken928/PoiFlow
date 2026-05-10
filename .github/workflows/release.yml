@@ -24,6 +24,9 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
+      - name: Set version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+
       - name: Install Wails
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
 
@@ -32,12 +35,14 @@ jobs:
         working-directory: frontend
 
       - name: Build Windows binary
-        run: wails build -platform windows/amd64 -skipbindings
+        run: |
+          wails build -platform windows/amd64 -skipbindings -ldflags "-X main.Version=${{ env.VERSION }}"
+          mv build/bin/PoiFlow.exe build/bin/PoiFlow-${{ env.VERSION }}.exe
         env:
           CGO_ENABLED: "0"
 
       - name: Upload release asset
         uses: softprops/action-gh-release@v2
         with:
-          files: build/bin/PoiFlow.exe
+          files: build/bin/PoiFlow-${{ github.ref_name }}.exe
           generate_release_notes: true
