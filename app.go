@@ -23,21 +23,14 @@ var Version = "dev"
 
 func (a *App) GetVersion() string { return Version }
 
-func configBase() string {
-	if d := os.Getenv("XDG_CONFIG_HOME"); d != "" { return filepath.Join(d, "poiflow") }
+func poiflowDir() string {
+	if d := os.Getenv("POIFLOW_DIR"); d != "" { return d }
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".config", "poiflow")
+	return filepath.Join(home, ".poiflow")
 }
-
-func dataBase() string {
-	if d := os.Getenv("XDG_DATA_HOME"); d != "" { return filepath.Join(d, "poiflow") }
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".local", "share", "poiflow")
-}
-
-func cacheDir() string     { return dataBase() }
-func statePath() string    { return filepath.Join(dataBase(), "tasks.json") }
-func configPath() string   { return filepath.Join(configBase(), akFileName) }
+func cacheDir() string     { return filepath.Join(poiflowDir(), "cache") }
+func statePath() string    { return filepath.Join(poiflowDir(), "tasks.json") }
+func configPath() string   { return filepath.Join(poiflowDir(), akFileName) }
 
 type App struct {
 	ctx    context.Context

@@ -1,7 +1,8 @@
 config.yaml
 build/bin
 node_modules
-frontend/dist/
-.xdg/
+frontend/dist/*
+!frontend/dist/placeholder
+data/
 .DS_Store
 *.md5

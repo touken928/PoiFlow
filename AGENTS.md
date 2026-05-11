@@ -34,8 +34,9 @@ frontend/src/App.tsx     # Fluent UI 前端（唯一前端组件）
 - `wails build` 会覆盖 `frontend/dist/`（删除未跟踪的文件）。CI 中用 `-skipbindings`
 - config.yaml 存储 AKs（命名+Key）和导出字段配置
 - AK 池每 AK 限 3 QPS。AK 耗尽自动轮转，全部失效时暂停当前任务
-- 任务状态持久化到 `$XDG_DATA_HOME/poiflow/tasks.json`；缓存 CSV 在 `$XDG_DATA_HOME/poiflow/<uuid>.csv`
+- 任务状态持久化到 `~/.poiflow/tasks.json`；缓存 CSV 在 `~/.poiflow/cache/<uuid>.csv`
 - 重启后运行中任务自动转为暂停
+- `POIFLOW_DIR` 环境变量覆盖数据目录（默认 `~/.poiflow`）。`.env` 文件自动加载
 
 ## Git
 
