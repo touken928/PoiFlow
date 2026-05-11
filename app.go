@@ -110,6 +110,7 @@ func (a *App) CreateTask(name, exportPath string, areaGran, queryGran int, targe
 func (a *App) GetTasks() []*task.Task     { return a.taskQ.List() }
 func (a *App) CancelTask(id string) bool  { return a.taskQ.Cancel(id) }
 func (a *App) DeleteTask(id string) bool  { return a.taskQ.Delete(id) }
+func (a *App) RetryTask(id string) bool   { return a.taskQ.Retry(id) }
 func (a *App) PauseTask(id string) bool   { return a.taskQ.Pause(id) }
 func (a *App) ResumeTask(id string) bool  { return a.taskQ.Resume(id) }
 func (a *App) GetTaskLogs(id string) []task.LogEntry { return a.taskQ.GetLogs(id) }

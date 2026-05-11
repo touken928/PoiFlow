@@ -193,6 +193,23 @@ func (q *Queue) Cancel(id string) bool {
 	return false
 }
 
+func (q *Queue) Retry(id string) bool {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	for _, t := range q.tasks {
+		if t.ID == id && t.Status == StatusFailed {
+			t.Status = StatusPending
+			t.Error = ""
+			t.CompletedTargets = 0
+			t.UpdatedAt = time.Now()
+			q.emit("task:updated", t); q.saveStateUnsafe()
+			if !q.running { q.running = true; go q.processLoop() }
+			return true
+		}
+	}
+	return false
+}
+
 func (q *Queue) Delete(id string) bool {
 	q.mu.Lock()
 	defer q.mu.Unlock()

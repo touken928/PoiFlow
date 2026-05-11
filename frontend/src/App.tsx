@@ -11,7 +11,7 @@ import {
 
 import {
     GetProvinces, GetCities, GetCounties, CreateTask, GetTasks,
-    CancelTask, PauseTask, ResumeTask, DeleteTask, GetAKItems,
+    CancelTask, PauseTask, ResumeTask, DeleteTask, RetryTask, GetAKItems,
     ResetAKPool, AddAK, RemoveAK, GetTaskLogs, ExportTaskDialog, ExportTaskGeoJSON, ExpandCount,
     GetExportConfig, SetExportConfig, GetVersion,
 } from '../wailsjs/go/main/App';
@@ -137,6 +137,7 @@ function App(){
     const handleResume=async(id:string)=>{await ResumeTask(id);loadAll();};
     const handleCancel=async(id:string)=>{await CancelTask(id);loadAll();};
     const handleDelete=async(id:string)=>{await DeleteTask(id);loadAll();if(sel?.id===id){setSel(null);setLogs([]);}};
+    const handleRetry=async(id:string)=>{await RetryTask(id);loadAll();};
     const handleAddAk=async()=>{if(!newAkKey){setMsg('请输入AK');return;}const r=await AddAK(newAkName,newAkKey);if(r)setMsg(r);else{setNewAkName('');setNewAkKey('');setMsg('AK已添加');}GetAKItems().then(setAkItems).catch(()=>{});};
     const handleRemoveAk=async(ak:string)=>{const r=await RemoveAK(ak);if(r)setMsg(r);GetAKItems().then(setAkItems).catch(()=>{});};
 
@@ -158,7 +159,9 @@ function App(){
                         {sel.status===2&&<Button icon={<Play24Regular/>} onClick={()=>handleResume(sel.id)}>继续</Button>}
                         {(sel.status===1||sel.status===2)&&<Button icon={<Delete24Regular/>} onClick={()=>handleDelete(sel.id)}>删除</Button>}
                         {sel.status===0&&<Button icon={<Delete24Regular/>} onClick={()=>handleCancel(sel.id)}>取消</Button>}
-                        {(sel.status===3||sel.status===4)&&<><Button icon={<ArrowDownload24Regular/>} onClick={()=>handleExport(sel.id)}>CSV</Button><Button icon={<ArrowDownload24Regular/>} onClick={()=>handleExportGeoJSON(sel.id)}>GeoJSON</Button><Button icon={<Delete24Regular/>} onClick={()=>handleDelete(sel.id)}>删除</Button></>}
+                        {(sel.status===3||sel.status===4)&&<><Button icon={<ArrowDownload24Regular/>} onClick={()=>handleExport(sel.id)}>CSV</Button><Button icon={<ArrowDownload24Regular/>} onClick={()=>handleExportGeoJSON(sel.id)}>GeoJSON</Button></>}
+                        {sel.status===4&&<Button icon={<Play24Regular/>} onClick={()=>handleRetry(sel.id)}>重试</Button>}
+                        {(sel.status===3||sel.status===4||sel.status===5)&&<Button icon={<Delete24Regular/>} onClick={()=>handleDelete(sel.id)}>删除</Button>}
                         {sel.status===5&&<Button icon={<Delete24Regular/>} onClick={()=>handleDelete(sel.id)}>删除</Button>}
                 </div>
             </div>
