@@ -310,7 +310,7 @@ func (q *Queue) execute(t *Task) {
 		if t.Status == StatusPaused { break }
 
 		for qi, term := range t.Queries {
-			q.addLog(t.ID, "info", fmt.Sprintf("搜索 [%d/%d] %s | 词: %s", i+1, total, target.Name, term.Query))
+			q.addLog(t.ID, "info", fmt.Sprintf("搜索 [%d/%d] %s | %s", i+1, total, target.Name, termStr(term)))
 
 			results, err := q.executor.SearchTarget(term.Query, term.Type, targetRegion(target), t.ID)
 			if err != nil {
@@ -343,7 +343,7 @@ func (q *Queue) execute(t *Task) {
 				knownUIDs[r.UID] = true
 			}
 
-			q.addLog(t.ID, "info", fmt.Sprintf("完成 [%d/%d] %s | 词: %s，获取 %d 条", i+1, total, target.Name, term.Query, len(results)))
+			q.addLog(t.ID, "info", fmt.Sprintf("完成 [%d/%d] %s | %s，获取 %d 条", i+1, total, target.Name, termStr(term), len(results)))
 
 			func() {
 				q.mu.Lock()
@@ -505,6 +505,11 @@ func itoa(n int) string {
 	s := ""
 	for n > 0 { s = string(rune('0'+n%10)) + s; n /= 10 }
 	return s
+}
+
+func termStr(t SearchTerm) string {
+	if t.Type != "" { return t.Query + " | 分类: " + t.Type }
+	return t.Query
 }
 
 func formatFloat(v float64) string {
