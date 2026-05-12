@@ -508,7 +508,8 @@ func itoa(n int) string {
 }
 
 func termStr(t SearchTerm) string {
-	if t.Type != "" { return t.Query + " | 分类: " + t.Type }
+	if t.Query != "" && t.Type != "" { return t.Query + " | 分类: " + t.Type }
+	if t.Type != "" { return "分类: " + t.Type }
 	return t.Query
 }
 
