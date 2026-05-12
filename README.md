@@ -1,4 +1,5 @@
 <p align="center">
+  <img src="build/appicon.png" width="80" height="80" alt="logo"><br>
   <strong>PoiFlow</strong><br>
   <em>百度POI数据采集工具 · 行政区划检索 · 多AK并发 · CSV/GeoJSON导出</em>
 </p>
