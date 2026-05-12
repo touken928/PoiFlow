@@ -262,7 +262,7 @@ function App(){
                             <div style={css.form}>
                                 <Input placeholder="任务名称" value={nName} onChange={(_e,d)=>setNName(d.value)}/>
 
-                                <Text weight="semibold" size={200} style={{color:tokens.colorNeutralForeground2,letterSpacing:'0.5px',marginTop:'4px'}}>── 搜索词和分类 ──</Text>
+                                <Text weight="semibold" size={200} style={{color:tokens.colorNeutralForeground2,letterSpacing:'0.5px',marginTop:'4px'}}>搜索词和分类</Text>
                                 {nQueries.map((q,i)=>(
                                     <div key={i} style={{display:'flex',gap:'8px',alignItems:'center'}}>
                                         <Input placeholder="搜索词" value={q.query} onChange={(_e,d)=>{const copy=[...nQueries];copy[i]={...copy[i],query:d.value};setNQueries(copy);}} style={{flex:1}}/>
@@ -270,14 +270,14 @@ function App(){
                                         <Button disabled={nQueries.length<=1} onClick={()=>setNQueries(nQueries.filter((_,j)=>j!==i))}>×</Button>
                                     </div>
                                 ))}
-                                <Button appearance="subtle" size="small" onClick={()=>setNQueries([...nQueries,{query:'',type:''}])}>+ 添加搜索词</Button>
+                                <Button appearance="outline" onClick={()=>setNQueries([...nQueries,{query:'',type:''}])}>+ 搜索词或分类</Button>
 
-                                <Text weight="semibold" size={200} style={{color:tokens.colorNeutralForeground2,letterSpacing:'0.5px',marginTop:'4px'}}>── 目标范围 ──</Text>
+                                <Text weight="semibold" size={200} style={{color:tokens.colorNeutralForeground2,letterSpacing:'0.5px',marginTop:'4px'}}>目标范围</Text>
                                 <div style={css.targets}>
                                     {renderTree()}
                                 </div>
 
-                                <Text weight="semibold" size={200} style={{color:tokens.colorNeutralForeground2,letterSpacing:'0.5px',marginTop:'4px'}}>── 搜索精度 ──</Text>
+                                <Text weight="semibold" size={200} style={{color:tokens.colorNeutralForeground2,letterSpacing:'0.5px',marginTop:'4px'}}>搜索精度</Text>
                                 <Dropdown placeholder="每个目标细分到" value={GRAN[nQueryGran]} onOptionSelect={(_e,d)=>{const v=Number(d.optionValue)||0;setNQueryGran(v);}}>
                                     {GRAN.map((l,i)=><Option key={i} value={String(i)} text={l} disabled={i<0}>{l}</Option>)}
                                 </Dropdown>
