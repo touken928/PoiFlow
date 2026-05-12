@@ -74,10 +74,6 @@ export function ImportSearchTerms() {
   return window['go']['main']['App']['ImportSearchTerms']();
 }
 
-export function ImportSearchTerms() {
-  return window['go']['main']['App']['ImportSearchTerms']();
-}
-
 export function PauseTask(arg1) {
   return window['go']['main']['App']['PauseTask'](arg1);
 }

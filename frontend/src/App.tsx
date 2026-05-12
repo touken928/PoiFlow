@@ -172,7 +172,7 @@ function App(){
     const handleCancel=async(id:string)=>{await CancelTask(id);loadAll();};
     const handleDelete=async(id:string)=>{await DeleteTask(id);loadAll();if(sel?.id===id){setSel(null);setLogs([]);}};
     const handleRetry=async(id:string)=>{await RetryTask(id);loadAll();};
-    const handleImport=async()=>{const r=await ImportSearchTerms();if(!r)return;const terms=r.split('\n').filter(l=>l.trim()).map(l=>{const p=l.indexOf(',');if(p>0)return{query:l.slice(0,p).trim(),type:l.slice(p+1).trim()};return{query:l.trim(),type:''};});if(terms.length)setNQueries(prev=>[...prev,...terms]);};
+    const handleImport=async()=>{const r=await ImportSearchTerms();if(!r)return;const terms=r.split('\n').filter(l=>l.trim()).map(l=>{const p=l.indexOf(',');if(p>=0)return{query:l.slice(0,p).trim(),type:l.slice(p+1).trim()};return{query:l.trim(),type:''};}).filter(t=>t.query||t.type);if(terms.length)setNQueries(prev=>[...prev,...terms]);};
     const handleAddAk=async()=>{if(!newAkKey){setMsg('请输入AK');return;}const r=await AddAK(newAkName,newAkKey);if(r)setMsg(r);else{setNewAkName('');setNewAkKey('');setMsg('AK已添加');}GetAKItems().then(setAkItems).catch(()=>{});};
     const handleRemoveAk=async(ak:string)=>{const r=await RemoveAK(ak);if(r)setMsg(r);GetAKItems().then(setAkItems).catch(()=>{});};
 
@@ -271,8 +271,10 @@ function App(){
                                         <Button disabled={nQueries.length<=1} onClick={()=>setNQueries(nQueries.filter((_,j)=>j!==i))}>×</Button>
                                     </div>
                                 ))}
-                                <Button appearance="outline" onClick={()=>setNQueries([...nQueries,{query:'',type:''}])}>+ 搜索词或分类</Button>
-                                <Button appearance="subtle" onClick={handleImport}>📂 导入</Button>
+                                <div style={{display:'flex',gap:'8px'}}>
+                                    <Button onClick={()=>setNQueries([...nQueries,{query:'',type:''}])} style={{flex:3}}>+ 搜索词或分类</Button>
+                                    <Button onClick={handleImport} style={{flex:1}}>导入</Button>
+                                </div>
 
                                 <Text weight="semibold" size={200} style={{color:tokens.colorNeutralForeground2,letterSpacing:'0.5px',marginTop:'4px'}}>目标范围</Text>
                                 <div style={css.targets}>
