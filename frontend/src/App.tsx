@@ -67,15 +67,13 @@ function App(){
     const [openAk,setOpenAk]=useState(false);
     const [nName,setNName]=useState('');
     const [nQueries,setNQueries]=useState([{query:'',type:''}]);
-    const [nAreaGran,setNAreaGran]=useState(0);
     const [nQueryGran,setNQueryGran]=useState(0);
     const [provinces,setProvinces]=useState<string[]>([]);
-    const [cities,setCities]=useState<string[]>([]);
-    const [counties,setCounties]=useState<string[]>([]);
-    const [nProv,setNProv]=useState('');
-    const [nCity,setNCity]=useState('');
     const [nTargets,setNTargets]=useState<{province:string;city:string;name:string}[]>([]);
     const [expandCount,setExpandCount]=useState(0);
+    const [treeExp,setTreeExp]=useState<Record<string,boolean>>({});
+    const [treeCities,setTreeCities]=useState<Record<string,string[]>>({});
+    const [treeCounties,setTreeCounties]=useState<Record<string,string[]>>({});
     const [newAkName,setNewAkName]=useState('');
     const [newAkKey,setNewAkKey]=useState('');
     const [settingsTab,setSettingsTab]=useState('ak');
@@ -117,19 +115,55 @@ function App(){
 
     useEffect(()=>{if(logEnd.current)logEnd.current.scrollIntoView({behavior:'smooth'});},[logs]);
 
-    useEffect(()=>{if(nTargets.length>0)ExpandCount(nAreaGran,nQueryGran,nTargets).then(c=>setExpandCount(c*nQueries.filter(q=>q.query.trim()||q.type.trim()).length||c)).catch(()=>setExpandCount(0));else setExpandCount(0);},[nTargets,nAreaGran,nQueryGran,nQueries]);
+    useEffect(()=>{if(nTargets.length>0)ExpandCount(0,nQueryGran,nTargets).then(c=>setExpandCount(c*nQueries.filter(q=>q.query.trim()||q.type.trim()).length||c)).catch(()=>setExpandCount(0));else setExpandCount(0);},[nTargets,nQueryGran,nQueries]);
 
-    const onProvChange=(v:string)=>{setNProv(v);setNCity('');setCities([]);setCounties([]);if(v)GetCities(v).then(setCities).catch(()=>{});};
-    const onCityChange=(v:string)=>{setNCity(v);setCounties([]);if(v&&nProv)GetCounties(nProv,v).then(setCounties).catch(()=>{});};
-    const toggleTarget=(name:string)=>setNTargets(p=>{if(p.some(t=>t.name===name))return p.filter(t=>t.name!==name);if(nAreaGran===0)return[...p,{province:name,city:'',name}];if(nAreaGran===1)return[...p,{province:nProv,city:'',name}];return[...p,{province:nProv,city:nCity,name}];});
+    const toggleTarget=(province:string,city:string,name:string)=>setNTargets(p=>{const i=p.findIndex(t=>t.name===name);if(i>=0)return p.filter((_,j)=>j!==i);return[...p,{province,city,name}];});
+
+    const toggleExp=async(level:string,parent:string,name:string)=>{
+        const key=parent?parent+'/'+name:name;
+        if(treeExp[key]){const n={...treeExp};delete n[key];setTreeExp(n);return;}
+        setTreeExp({...treeExp,[key]:true});
+        if(level==='prov'&&!treeCities[name]){const c=await GetCities(name);setTreeCities({...treeCities,[name]:c||[]});}
+        if(level==='city'&&!treeCounties[key]){const c=await GetCounties(parent,name);setTreeCounties({...treeCounties,[key]:c||[]});}
+    };
+
+    function renderTree(){
+        let items:any[]=[];
+        for(let p of provinces){
+            let ex=treeExp[p];
+            items.push(<div key={p} style={{display:'flex',alignItems:'center',gap:4,padding:'2px 0',cursor:'pointer',userSelect:'none'}}>
+                <span onClick={()=>toggleExp('prov','',p)} style={{width:16,textAlign:'center',fontSize:11,color:tokens.colorNeutralForeground3}}>{ex?'▼':'▶'}</span>
+                <input type="checkbox" checked={nTargets.some(t=>t.name===p)} onChange={()=>toggleTarget(p,'',p)}/>
+                <Text size={200}>{p}</Text>
+            </div>);
+            if(ex&&treeCities[p]){
+                for(let c of treeCities[p]){
+                    let ck=p+'/'+c,ex2=treeExp[ck];
+                    items.push(<div key={ck} style={{display:'flex',alignItems:'center',gap:4,padding:'2px 0',paddingLeft:24,cursor:'pointer',userSelect:'none'}}>
+                        <span onClick={()=>toggleExp('city',p,c)} style={{width:16,textAlign:'center',fontSize:11,color:tokens.colorNeutralForeground3}}>{ex2?'▼':'▶'}</span>
+                        <input type="checkbox" checked={nTargets.some(t=>t.name===c)} onChange={()=>toggleTarget(p,'',c)}/>
+                        <Text size={200}>{c}</Text>
+                    </div>);
+                    if(ex2&&treeCounties[ck]){
+                        for(let co of treeCounties[ck]){
+                            items.push(<div key={ck+'/'+co} style={{display:'flex',alignItems:'center',gap:4,padding:'2px 0',paddingLeft:48,cursor:'pointer',userSelect:'none'}}>
+                                <span style={{width:16}}/>
+                                <input type="checkbox" checked={nTargets.some(t=>t.name===co)} onChange={()=>toggleTarget(p,c,co)}/>
+                                <Text size={200}>{co}</Text>
+                            </div>);
+                        }
+                    }
+                }
+            }
+        }
+        return items;
+    }
 
     const handleCreate = async () => {
         const valid = nQueries.filter(q => q.query.trim() || q.type.trim());
         if(!nName||valid.length===0||nTargets.length===0){setMsg('请填写任务名称、搜索词/分类并选择目标');return;}
-        try{await CreateTask(nName,'',nAreaGran,nQueryGran,nTargets,valid);setOpenNew(false);setMsg('');setNName('');setNQueries([{query:'',type:''}]);
-        setNTargets([]);setNProv('');setNCity('');setExpandCount(0);}
-        catch(e:any){setMsg('创建失败: '+e);}
-    };
+        try{await CreateTask(nName,'',0,nQueryGran,nTargets,valid);setOpenNew(false);setMsg('');setNName('');setNQueries([{query:'',type:''}]);
+        setNTargets([]);setExpandCount(0);setTreeExp({});}catch(e:any){setMsg('创建失败: '+e);}}
     const selectTask=async(t:Task)=>{setSel(t);try{setLogs(await GetTaskLogs(t.id)||[]);}catch(e){}};
     const handleExport=async(id:string)=>{console.log('export csv',id);try{const r=await ExportTaskDialog(id);console.log('export result',r);if(r)setMsg(r);}catch(e:any){console.error(e);setMsg('导出失败: '+e);}};
     const handleExportGeoJSON=async(id:string)=>{console.log('export geojson',id);try{const r=await ExportTaskGeoJSON(id);console.log('export result',r);if(r)setMsg(r);}catch(e:any){console.error(e);setMsg('导出GeoJSON失败: '+e);}};
@@ -143,7 +177,6 @@ function App(){
 
     const toggleField=async(f:string)=>{const next=exportFields.includes(f)?exportFields.filter(x=>x!==f):[...exportFields,f];setExportFields(next);await SetExportConfig(next);};
 
-    const available=nAreaGran===0?provinces:nAreaGran===1?cities:counties;
 
     const badge=(st:number)=>{const m:Record<number,'success'|'warning'|'danger'|'important'>={0:'important',1:'warning',2:'warning',3:'success',4:'danger',5:'important'};return<Badge appearance="filled" color={m[st]||'important'} size="small">{STATUS_LABELS[st]||'?'}</Badge>;};
     const nQueriesText=(t:Task)=>{if(!t.queries||t.queries.length===0)return'';return t.queries.map(q=>q.query+(q.type?'('+q.type+')':'')).join(', ');};
@@ -240,29 +273,17 @@ function App(){
                                 <Button appearance="subtle" size="small" onClick={()=>setNQueries([...nQueries,{query:'',type:''}])}>+ 添加搜索词</Button>
 
                                 <Text weight="semibold" size={200} style={{color:tokens.colorNeutralForeground2,letterSpacing:'0.5px',marginTop:'4px'}}>── 目标范围 ──</Text>
-                                <Dropdown placeholder="选择目标级别" value={GRAN[nAreaGran]} onOptionSelect={(_e,d)=>{const v=Number(d.optionValue)||0;setNAreaGran(v);if(v>nQueryGran)setNQueryGran(v);setNTargets([]);setNProv('');setNCity('');}}>
-                                    {GRAN.map((l,i)=><Option key={i} value={String(i)} text={l}>{l}</Option>)}
-                                </Dropdown>
-                                {nAreaGran>=1&&<Dropdown placeholder="省份" value={nProv} onOptionSelect={(_e,d)=>onProvChange(d.optionValue||'')}>{provinces.map(p=><Option key={p} value={p} text={p}>{p}</Option>)}</Dropdown>}
-                                {nAreaGran>=2&&nProv&&<Dropdown placeholder="城市" value={nCity} onOptionSelect={(_e,d)=>onCityChange(d.optionValue||'')}>{cities.map(c=><Option key={c} value={c} text={c}>{c}</Option>)}</Dropdown>}
-                                <Text weight="semibold" size={200}>选择{nAreaGran===0?'省/直辖市':nAreaGran===1?'城市':'区县'} <Badge>{nTargets.length}</Badge></Text>
                                 <div style={css.targets}>
-                                    {available.length===0&&<Text size={200} style={{color:'#888'}}>请先选择上级区域</Text>}
-                                    {available.map(name=>(
-                                        <div key={name} style={{display:'flex',alignItems:'center',gap:'8px',padding:'4px 8px',borderRadius:'4px',cursor:'pointer',background:nTargets.some(t=>t.name===name)?tokens.colorBrandBackground2:'transparent'}} onClick={()=>toggleTarget(name)}>
-                                            <input type="checkbox" checked={nTargets.some(t=>t.name===name)} readOnly/>
-                                            <Text size={200}>{name}</Text>
-                                        </div>
-                                    ))}
+                                    {renderTree()}
                                 </div>
 
                                 <Text weight="semibold" size={200} style={{color:tokens.colorNeutralForeground2,letterSpacing:'0.5px',marginTop:'4px'}}>── 搜索精度 ──</Text>
-                                <Dropdown placeholder="每个目标细分到" value={GRAN[nQueryGran]} onOptionSelect={(_e,d)=>{const v=Number(d.optionValue)||nAreaGran;if(v>=nAreaGran)setNQueryGran(v);}}>
-                                    {GRAN.map((l,i)=><Option key={i} value={String(i)} text={l} disabled={i<nAreaGran}>{l}</Option>)}
+                                <Dropdown placeholder="每个目标细分到" value={GRAN[nQueryGran]} onOptionSelect={(_e,d)=>{const v=Number(d.optionValue)||0;setNQueryGran(v);}}>
+                                    {GRAN.map((l,i)=><Option key={i} value={String(i)} text={l} disabled={i<0}>{l}</Option>)}
                                 </Dropdown>
                                 {nTargets.length>0&&(
                                     <div style={{padding:'10px 12px',background:tokens.colorNeutralBackground3,borderRadius:'6px',fontSize:'13px',color:tokens.colorNeutralForeground2}}>
-                                        <Text size={200}>已选 <b>{nTargets.length}</b> 个{GRAN[nAreaGran]}目标，将分别搜索每个目标下所有<b>{GRAN[nQueryGran]}</b>级区域</Text>
+                                        <Text size={200}>已选 <b>{nTargets.length}</b> 个目标，将分别搜索每个目标下所有<b>{GRAN[nQueryGran]}</b>级区域</Text>
                                         {expandCount>0&&<div style={{marginTop:'4px'}}><Text size={200}>预计发送 <b>{expandCount}</b> 次API查询</Text></div>}
                                     </div>
                                 )}
