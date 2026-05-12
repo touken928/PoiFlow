@@ -482,15 +482,33 @@ func expandTargets(targets []Target, areaGran, queryGran Granularity) []Target {
 	}
 	var expanded []Target
 	for _, t := range targets {
-		switch {
-		case areaGran == GranularityProvince && queryGran == GranularityCity:
-			for _, c := range division.Cities(t.Name) { expanded = append(expanded, Target{Province: t.Name, Name: c}) }
-		case areaGran == GranularityProvince && queryGran == GranularityCounty:
-			for _, c := range division.Cities(t.Name) {
-				for _, ct := range division.Counties(t.Name, c) { expanded = append(expanded, Target{Province: t.Name, City: c, Name: ct}) }
+		if t.City != "" {
+			// county level - already at finest level
+			expanded = append(expanded, t)
+		} else if t.Province != t.Name {
+			// city level - can expand to counties if needed
+			if queryGran == GranularityCounty {
+				for _, ct := range division.Counties(t.Province, t.Name) {
+					expanded = append(expanded, Target{Province: t.Province, City: t.Name, Name: ct})
+				}
+			} else {
+				expanded = append(expanded, t)
 			}
-		case areaGran == GranularityCity && queryGran == GranularityCounty:
-			for _, ct := range division.Counties(t.Province, t.Name) { expanded = append(expanded, Target{Province: t.Province, City: t.Name, Name: ct}) }
+		} else {
+			// province level - expand based on query granularity
+			if queryGran == GranularityCity {
+				for _, c := range division.Cities(t.Name) {
+					expanded = append(expanded, Target{Province: t.Name, Name: c})
+				}
+			} else if queryGran == GranularityCounty {
+				for _, c := range division.Cities(t.Name) {
+					for _, ct := range division.Counties(t.Name, c) {
+						expanded = append(expanded, Target{Province: t.Name, City: c, Name: ct})
+					}
+				}
+			} else {
+				expanded = append(expanded, t)
+			}
 		}
 	}
 	return expanded
