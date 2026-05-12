@@ -294,6 +294,13 @@ func (q *Queue) execute(t *Task) {
 		q.addLog(t.ID, "info", fmt.Sprintf("从第 %d/%d 个目标继续", startFrom+1, total))
 	}
 
+	queryCount := len(t.Queries)
+	if queryCount < 1 { queryCount = 1 }
+	opTotal := total * queryCount
+	opIndex := 0
+
+	if startFrom > 0 { opIndex = startFrom * queryCount }
+
 	targetRegion := func(t Target) string {
 		if t.City != "" { return t.City + t.Name }
 		return t.Name
@@ -310,7 +317,8 @@ func (q *Queue) execute(t *Task) {
 		if t.Status == StatusPaused { break }
 
 		for qi, term := range t.Queries {
-			q.addLog(t.ID, "info", fmt.Sprintf("搜索 [%d/%d] %s | %s", i+1, total, target.Name, termStr(term)))
+			opIndex++
+			q.addLog(t.ID, "info", fmt.Sprintf("搜索 [%d/%d] %s | %s", opIndex, opTotal, target.Name, termStr(term)))
 
 			results, err := q.executor.SearchTarget(term.Query, term.Type, targetRegion(target), t.ID)
 			if err != nil {
@@ -343,7 +351,7 @@ func (q *Queue) execute(t *Task) {
 				knownUIDs[r.UID] = true
 			}
 
-			q.addLog(t.ID, "info", fmt.Sprintf("完成 [%d/%d] %s | %s，获取 %d 条", i+1, total, target.Name, termStr(term), len(results)))
+			q.addLog(t.ID, "info", fmt.Sprintf("完成 [%d/%d] %s | %s，获取 %d 条", opIndex, opTotal, target.Name, termStr(term), len(results)))
 
 			func() {
 				q.mu.Lock()
@@ -358,13 +366,13 @@ func (q *Queue) execute(t *Task) {
 		q.mu.Lock()
 		t.Records = len(allRecords)
 		t.CompletedTargets = i + 1
-		t.Progress = itoa(i+1) + "/" + itoa(total)
+		t.Progress = itoa(opIndex) + "/" + itoa(opTotal)
 		t.UpdatedAt = time.Now()
 		q.mu.Unlock()
 		q.saveState()
 		q.emit("task:progress", map[string]interface{}{
 			"task": t, "target": target, "records": len(allRecords),
-			"total": total, "current": i + 1, "allCount": len(allRecords),
+			"total": opTotal, "current": opIndex, "allCount": len(allRecords),
 		})
 	}
 
