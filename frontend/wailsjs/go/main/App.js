@@ -70,6 +70,14 @@ export function Greet(arg1) {
   return window['go']['main']['App']['Greet'](arg1);
 }
 
+export function ImportSearchTerms() {
+  return window['go']['main']['App']['ImportSearchTerms']();
+}
+
+export function ImportSearchTerms() {
+  return window['go']['main']['App']['ImportSearchTerms']();
+}
+
 export function PauseTask(arg1) {
   return window['go']['main']['App']['PauseTask'](arg1);
 }

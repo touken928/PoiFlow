@@ -272,3 +272,19 @@ func sanitizeFilename(s string) string {
 	}
 	return string(b)
 }
+
+func (a *App) ImportSearchTerms() string {
+	if a.ctx == nil { return "" }
+	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "导入搜索词",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "CSV或文本文件 (*.csv,*.txt)", Pattern: "*.csv;*.txt"},
+			{DisplayName: "所有文件 (*.*)", Pattern: "*.*"},
+		},
+	})
+	if err != nil { return "" }
+	if path == "" { return "" }
+	data, err := os.ReadFile(path)
+	if err != nil { return "" }
+	return string(data)
+}

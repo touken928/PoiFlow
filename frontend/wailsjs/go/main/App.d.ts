@@ -38,6 +38,8 @@ export function GetVersion():Promise<string>;
 
 export function Greet(arg1:string):Promise<string>;
 
+export function ImportSearchTerms():Promise<string>;
+
 export function PauseTask(arg1:string):Promise<boolean>;
 
 export function RemoveAK(arg1:string):Promise<string>;
