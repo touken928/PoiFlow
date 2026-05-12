@@ -117,6 +117,16 @@ function App(){
 
     useEffect(()=>{if(nTargets.length>0)ExpandCount(0,nQueryGran,nTargets).then(c=>setExpandCount(c*nQueries.filter(q=>q.query.trim()||q.type.trim()).length||c)).catch(()=>setExpandCount(0));else setExpandCount(0);},[nTargets,nQueryGran,nQueries]);
 
+    // auto-adjust query granularity when targets change
+    useEffect(()=>{
+        let minGran=0;
+        for(const t of nTargets){
+            if(t.city)minGran=Math.max(minGran,2);
+            else if(t.province!==t.name)minGran=Math.max(minGran,1);
+        }
+        if(nQueryGran<minGran)setNQueryGran(minGran);
+    },[nTargets]);
+
     const toggleTarget=(province:string,city:string,name:string)=>setNTargets(p=>{const i=p.findIndex(t=>t.name===name);if(i>=0)return p.filter((_,j)=>j!==i);return[...p,{province,city,name}];});
 
     const toggleExp=async(level:string,parent:string,name:string)=>{
@@ -276,15 +286,15 @@ function App(){
                                     <Button onClick={handleImport} style={{flex:1}}>导入</Button>
                                 </div>
 
+                                <Text weight="semibold" size={200} style={{color:tokens.colorNeutralForeground2,letterSpacing:'0.5px',marginTop:'4px'}}>搜索精度</Text>
+                                <Dropdown placeholder="每个目标细分到" value={GRAN[nQueryGran]} onOptionSelect={(_e,d)=>{const v=Number(d.optionValue)||0;setNQueryGran(v);}}>
+                                    {GRAN.map((l,i)=><Option key={i} value={String(i)} text={l}>{l}</Option>)}
+                                </Dropdown>
+
                                 <Text weight="semibold" size={200} style={{color:tokens.colorNeutralForeground2,letterSpacing:'0.5px',marginTop:'4px'}}>目标范围</Text>
                                 <div style={css.targets}>
                                     {renderTree()}
                                 </div>
-
-                                <Text weight="semibold" size={200} style={{color:tokens.colorNeutralForeground2,letterSpacing:'0.5px',marginTop:'4px'}}>搜索精度</Text>
-                                <Dropdown placeholder="每个目标细分到" value={GRAN[nQueryGran]} onOptionSelect={(_e,d)=>{const v=Number(d.optionValue)||0;setNQueryGran(v);}}>
-                                    {GRAN.map((l,i)=><Option key={i} value={String(i)} text={l} disabled={i<0}>{l}</Option>)}
-                                </Dropdown>
                                 {nTargets.length>0&&(
                                     <div style={{padding:'10px 12px',background:tokens.colorNeutralBackground3,borderRadius:'6px',fontSize:'13px',color:tokens.colorNeutralForeground2}}>
                                         <Text size={200}>已选 <b>{nTargets.length}</b> 个目标，将分别搜索每个目标下所有<b>{GRAN[nQueryGran]}</b>级区域</Text>
