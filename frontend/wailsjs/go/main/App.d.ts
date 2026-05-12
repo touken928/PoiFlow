@@ -12,8 +12,6 @@ export function CreateTask(arg1:string,arg2:string,arg3:number,arg4:number,arg5:
 
 export function DeleteTask(arg1:string):Promise<boolean>;
 
-export function RetryTask(arg1:string):Promise<boolean>;
-
 export function ExpandCount(arg1:number,arg2:number,arg3:Array<main.TaskTargetInput>):Promise<number>;
 
 export function ExportTaskCSV(arg1:string,arg2:string):Promise<string>;

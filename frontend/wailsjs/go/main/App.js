@@ -18,10 +18,6 @@ export function DeleteTask(arg1) {
   return window['go']['main']['App']['DeleteTask'](arg1);
 }
 
-export function RetryTask(arg1) {
-  return window['go']['main']['App']['RetryTask'](arg1);
-}
-
 export function ExpandCount(arg1, arg2, arg3) {
   return window['go']['main']['App']['ExpandCount'](arg1, arg2, arg3);
 }

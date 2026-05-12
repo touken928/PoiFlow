@@ -277,10 +277,10 @@ func TestRegionSearchEmptyQuery(t *testing.T) {
 		Region: "北京",
 	})
 	if err == nil {
-		t.Error("expected error for empty query")
+		t.Error("expected error for empty query and type")
 	}
-	if !strings.Contains(err.Error(), "query is required") {
-		t.Errorf("expected 'query is required' in error, got '%v'", err)
+	if !strings.Contains(err.Error(), "or type is required") {
+		t.Errorf("expected 'or type is required' in error, got '%v'", err)
 	}
 }
 

@@ -117,15 +117,15 @@ function App(){
 
     useEffect(()=>{if(logEnd.current)logEnd.current.scrollIntoView({behavior:'smooth'});},[logs]);
 
-    useEffect(()=>{if(nTargets.length>0)ExpandCount(nAreaGran,nQueryGran,nTargets).then(c=>setExpandCount(c*nQueries.filter(q=>q.query.trim()).length||c)).catch(()=>setExpandCount(0));else setExpandCount(0);},[nTargets,nAreaGran,nQueryGran,nQueries]);
+    useEffect(()=>{if(nTargets.length>0)ExpandCount(nAreaGran,nQueryGran,nTargets).then(c=>setExpandCount(c*nQueries.filter(q=>q.query.trim()||q.type.trim()).length||c)).catch(()=>setExpandCount(0));else setExpandCount(0);},[nTargets,nAreaGran,nQueryGran,nQueries]);
 
     const onProvChange=(v:string)=>{setNProv(v);setNCity('');setCities([]);setCounties([]);if(v)GetCities(v).then(setCities).catch(()=>{});};
     const onCityChange=(v:string)=>{setNCity(v);setCounties([]);if(v&&nProv)GetCounties(nProv,v).then(setCounties).catch(()=>{});};
     const toggleTarget=(name:string)=>setNTargets(p=>{if(p.some(t=>t.name===name))return p.filter(t=>t.name!==name);if(nAreaGran===0)return[...p,{province:name,city:'',name}];if(nAreaGran===1)return[...p,{province:nProv,city:'',name}];return[...p,{province:nProv,city:nCity,name}];});
 
     const handleCreate = async () => {
-        const valid = nQueries.filter(q => q.query.trim());
-        if(!nName||valid.length===0||nTargets.length===0){setMsg('请填写任务名称、搜索词并选择目标');return;}
+        const valid = nQueries.filter(q => q.query.trim() || q.type.trim());
+        if(!nName||valid.length===0||nTargets.length===0){setMsg('请填写任务名称、搜索词/分类并选择目标');return;}
         try{await CreateTask(nName,'',nAreaGran,nQueryGran,nTargets,valid);setOpenNew(false);setMsg('');setNName('');setNQueries([{query:'',type:''}]);
         setNTargets([]);setNProv('');setNCity('');setExpandCount(0);}
         catch(e:any){setMsg('创建失败: '+e);}

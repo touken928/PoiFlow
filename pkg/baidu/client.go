@@ -68,8 +68,8 @@ func (c *Client) RegionSearch(req *RegionRequest) (*RegionResponse, error) {
 	if req == nil {
 		return nil, fmt.Errorf("request must not be nil")
 	}
-	if req.Query == "" {
-		return nil, fmt.Errorf("query is required")
+	if req.Query == "" && req.Type == "" {
+		return nil, fmt.Errorf("query or type is required")
 	}
 	if req.Region == "" {
 		return nil, fmt.Errorf("region is required")
