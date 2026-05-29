@@ -7,16 +7,20 @@ import {
 import {
     Settings24Regular, Add24Regular, Play24Regular, Pause24Regular,
     Delete24Regular, ArrowDownload24Regular,
+    DocumentText24Regular, Table24Regular, Eye24Regular,
 } from '@fluentui/react-icons';
 
 import {
     GetProvinces, GetCities, GetCounties, CreateTask, GetTasks,
     CancelTask, PauseTask, ResumeTask, DeleteTask, RetryTask, GetAKItems,
-    ResetAKPool, AddAK, RemoveAK, GetTaskLogs, ExportTaskDialog, ExportTaskGeoJSON, ExpandCount,
+    ResetAKPool, AddAK, RemoveAK, GetTaskLogs, GetTaskRecords, ExportTaskDialog, ExportTaskGeoJSON, ExpandCount,
     GetExportConfig, SetExportConfig, GetVersion, ImportSearchTerms,
 } from '../wailsjs/go/main/App';
-import {EventsOn} from '../wailsjs/runtime/runtime';
+import {EventsOn, WindowSetTitle} from '../wailsjs/runtime/runtime';
+import {PoiMap} from './PoiMap';
+import {PoiTable} from './PoiTable';
 
+const APP_TITLE = 'PoiFlow';
 const STATUS_LABELS = ['等待中','执行中','已暂停','已完成','失败','已取消'];
 const GRAN = ['省级','市级','区县级'];
 
@@ -30,7 +34,10 @@ interface Task {
     createdAt: string; updatedAt: string;
 }
 interface LogEntry{time:string;message:string;level:string}
+interface PoiRecord{name:string;lng:number;lat:number;address:string;telephone:string;province:string;city:string;area:string;uid:string;query:string;type:string;taskName:string;target:string}
 interface AKItem{name:string;ak:string;used:number;failed:boolean;failMsg:string}
+type DetailView='log'|'preview'|'table';
+const TABLE_LIMIT=1000;
 
 const st = (styles: Record<string,any>) => styles;
 
@@ -49,9 +56,12 @@ const css = st({
     footer:{padding:'10px 16px',borderTop:`1px solid ${tokens.colorNeutralStroke1}`,display:'flex',alignItems:'center',cursor:'pointer',color:tokens.colorNeutralForeground2},
     main:{flex:'1',display:'flex',flexDirection:'column',overflow:'hidden'},
     empty:{flex:'1',display:'flex',alignItems:'center',justifyContent:'center',color:tokens.colorNeutralForeground3,flexDirection:'column',gap:'8px'},
-    logPanel:{flex:'1',display:'flex',flexDirection:'column',overflow:'hidden'},
-    logHeader:{height:'56px',padding:'0 20px',fontFamily:'sans-serif',borderBottom:`1px solid ${tokens.colorNeutralStroke2}`,background:tokens.colorNeutralBackground1,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between'},
-    logBody:{flex:'1',overflowY:'auto',padding:'0 20px 20px',fontFamily:'monospace',fontSize:'13px',lineHeight:'1.7'},
+    detailPanel:{flex:'1',display:'flex',flexDirection:'column',overflow:'hidden'},
+    detailHeader:{height:'56px',padding:'0 20px',fontFamily:'sans-serif',borderBottom:`1px solid ${tokens.colorNeutralStroke2}`,background:tokens.colorNeutralBackground1,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'space-between',gap:'12px'},
+    detailBody:{flex:'1',overflowY:'auto',padding:'0 20px 20px'},
+    logBody:{fontFamily:'monospace',fontSize:'13px',lineHeight:'1.7',paddingTop:'20px'},
+    mapBody:{flex:'1',minHeight:0,overflow:'hidden'},
+    tableBody:{flex:'1',minHeight:0,overflow:'hidden',display:'flex',flexDirection:'column'},
     form:{display:'flex',flexDirection:'column',gap:'14px',minWidth:'460px'},
     targets:{border:`1px solid ${tokens.colorNeutralStroke2}`,borderRadius:'8px',padding:'12px',maxHeight:'200px',overflowY:'auto'},
 });
@@ -62,6 +72,8 @@ function App(){
     const [akItems,setAkItems]=useState<AKItem[]>([]);
     const [sel,setSel]=useState<Task|null>(null);
     const [logs,setLogs]=useState<LogEntry[]>([]);
+    const [records,setRecords]=useState<PoiRecord[]>([]);
+    const [detailView,setDetailView]=useState<DetailView>('preview');
     const [msg,setMsg]=useState('');
     const [openNew,setOpenNew]=useState(false);
     const [openAk,setOpenAk]=useState(false);
@@ -95,10 +107,15 @@ function App(){
     useEffect(()=>{GetExportConfig().then(c=>setExportFields(c.Fields||allFields)).catch(()=>{});},[]);
 
     const loadAll=useCallback(()=>{GetTasks().then(setTasks).catch(()=>{});GetAKItems().then(setAkItems).catch(()=>{});},[]);
+    const loadRecords=useCallback(async(id:string)=>{try{setRecords((await GetTaskRecords(id))||[]);}catch{setRecords([]);}},[]);
 
     useEffect(()=>{GetProvinces().then(setProvinces).catch(()=>{});GetVersion().then(setAppVersion).catch(()=>{});loadAll();const c=[EventsOn('task:added',loadAll),EventsOn('task:updated',loadAll),EventsOn('task:completed',loadAll),EventsOn('task:failed',loadAll),EventsOn('task:deleted',loadAll)];return()=>{c.forEach(f=>f());};},[loadAll]);
 
     useEffect(()=>{if(sel){const u=tasks.find(t=>t.id===sel.id);if(u)setSel(u);}},[tasks]);
+
+    useEffect(()=>{
+        WindowSetTitle(sel?.name ? `${APP_TITLE} - ${sel.name}` : APP_TITLE);
+    },[sel?.id, sel?.name]);
 
     useEffect(()=>{
         if(!sel)return;
@@ -113,7 +130,28 @@ function App(){
 
     useEffect(()=>{const iv=setInterval(()=>{GetTasks().then(setTasks).catch(()=>{});},3000);return()=>clearInterval(iv);},[]);
 
-    useEffect(()=>{if(logEnd.current)logEnd.current.scrollIntoView({behavior:'smooth'});},[logs]);
+    useEffect(()=>{
+        if(!sel){setRecords([]);return;}
+        if(detailView!=='log')loadRecords(sel.id);
+    },[sel?.id,detailView,loadRecords]);
+
+    useEffect(()=>{
+        if(!sel||detailView==='log')return;
+        const refresh=(data:any)=>{
+            const id=data?.id??data?.task?.id;
+            if(id===sel.id)loadRecords(sel.id);
+        };
+        const c=[EventsOn('task:updated',refresh),EventsOn('task:progress',refresh),EventsOn('task:completed',refresh)];
+        return()=>{c.forEach(f=>f());};
+    },[sel?.id,detailView,loadRecords]);
+
+    useEffect(()=>{
+        if(!sel||detailView==='log'||sel.status!==1)return;
+        const iv=setInterval(()=>loadRecords(sel.id),3000);
+        return()=>clearInterval(iv);
+    },[sel?.id,sel?.status,detailView,loadRecords]);
+
+    useEffect(()=>{if(detailView==='log'&&logEnd.current)logEnd.current.scrollIntoView({behavior:'smooth'});},[logs,detailView]);
 
     useEffect(()=>{if(nTargets.length>0)ExpandCount(0,nQueryGran,nTargets).then(c=>setExpandCount(c*nQueries.filter(q=>q.query.trim()||q.type.trim()).length||c)).catch(()=>setExpandCount(0));else setExpandCount(0);},[nTargets,nQueryGran,nQueries]);
 
@@ -174,13 +212,13 @@ function App(){
         if(!nName||valid.length===0||nTargets.length===0){setMsg('请填写任务名称、搜索词/分类并选择目标');return;}
         try{await CreateTask(nName,'',0,nQueryGran,nTargets,valid);setOpenNew(false);setMsg('');setNName('');setNQueries([{query:'',type:''}]);
         setNTargets([]);setExpandCount(0);setTreeExp({});}catch(e:any){setMsg('创建失败: '+e);}}
-    const selectTask=async(t:Task)=>{setSel(t);try{setLogs(await GetTaskLogs(t.id)||[]);}catch(e){}};
+    const selectTask=async(t:Task)=>{setSel(t);try{setLogs(await GetTaskLogs(t.id)||[]);}catch{}if(detailView!=='log')loadRecords(t.id);};
     const handleExport=async(id:string)=>{console.log('export csv',id);try{const r=await ExportTaskDialog(id);console.log('export result',r);if(r)setMsg(r);}catch(e:any){console.error(e);setMsg('导出失败: '+e);}};
     const handleExportGeoJSON=async(id:string)=>{console.log('export geojson',id);try{const r=await ExportTaskGeoJSON(id);console.log('export result',r);if(r)setMsg(r);}catch(e:any){console.error(e);setMsg('导出GeoJSON失败: '+e);}};
     const handlePause=async(id:string)=>{await PauseTask(id);loadAll();};
     const handleResume=async(id:string)=>{await ResumeTask(id);loadAll();};
     const handleCancel=async(id:string)=>{await CancelTask(id);loadAll();};
-    const handleDelete=async(id:string)=>{await DeleteTask(id);loadAll();if(sel?.id===id){setSel(null);setLogs([]);}};
+    const handleDelete=async(id:string)=>{await DeleteTask(id);loadAll();if(sel?.id===id){setSel(null);setLogs([]);setRecords([]);}};
     const handleRetry=async(id:string)=>{await RetryTask(id);loadAll();};
     const handleImport=async()=>{const r=await ImportSearchTerms();if(!r)return;const terms=r.split('\n').filter(l=>l.trim()).map(l=>{const p=l.indexOf(',');if(p>=0)return{query:l.slice(0,p).trim(),type:l.slice(p+1).trim()};return{query:l.trim(),type:''};}).filter(t=>t.query||t.type);if(terms.length)setNQueries(prev=>[...prev,...terms]);};
     const handleAddAk=async()=>{if(!newAkKey){setMsg('请输入AK');return;}const r=await AddAK(newAkName,newAkKey);if(r)setMsg(r);else{setNewAkName('');setNewAkKey('');setMsg('AK已添加');}GetAKItems().then(setAkItems).catch(()=>{});};
@@ -193,22 +231,22 @@ function App(){
     const nQueriesText=(t:Task)=>{if(!t.queries||t.queries.length===0)return'';return t.queries.map(q=>q.query+(q.type?'('+q.type+')':'')).join(', ');};
 
     const logLevelStyle=(lvl:string)=>({color:lvl==='error'?tokens.colorStatusDangerForeground1:lvl==='warn'?tokens.colorStatusWarningForeground1:tokens.colorNeutralForeground1});
+    const tableColumns=['lng','lat',...exportFields.filter(f=>f!=='lng'&&f!=='lat')];
 
-    const mainView=sel?(
-        <div style={css.logPanel}>
-            <div style={css.logHeader}>
-                <Text weight="semibold">{sel.name} - 日志</Text>
-                <div style={{display:'flex',gap:'4px',flexShrink:0}}>
-                        {sel.status===1&&<Button icon={<Pause24Regular/>} onClick={()=>handlePause(sel.id)}>暂停</Button>}
-                        {sel.status===2&&<Button icon={<Play24Regular/>} onClick={()=>handleResume(sel.id)}>继续</Button>}
-                        {(sel.status===1||sel.status===2)&&<Button icon={<Delete24Regular/>} onClick={()=>handleDelete(sel.id)}>删除</Button>}
-                        {sel.status===0&&<Button icon={<Delete24Regular/>} onClick={()=>handleCancel(sel.id)}>取消</Button>}
-                        {(sel.status===3||sel.status===4)&&<><Button icon={<ArrowDownload24Regular/>} onClick={()=>handleExport(sel.id)}>CSV</Button><Button icon={<ArrowDownload24Regular/>} onClick={()=>handleExportGeoJSON(sel.id)}>GeoJSON</Button></>}
-                        {sel.status===4&&<Button icon={<Play24Regular/>} onClick={()=>handleRetry(sel.id)}>重试</Button>}
-                        {(sel.status===3||sel.status===4||sel.status===5)&&<Button icon={<Delete24Regular/>} onClick={()=>handleDelete(sel.id)}>删除</Button>}
-                        {sel.status===5&&<Button icon={<Delete24Regular/>} onClick={()=>handleDelete(sel.id)}>删除</Button>}
-                </div>
-            </div>
+    const renderTaskActions=()=>(
+        <div style={{display:'flex',gap:'4px',flexShrink:0}}>
+            {sel!.status===1&&<Button icon={<Pause24Regular/>} onClick={()=>handlePause(sel!.id)}>暂停</Button>}
+            {sel!.status===2&&<Button icon={<Play24Regular/>} onClick={()=>handleResume(sel!.id)}>继续</Button>}
+            {(sel!.status===1||sel!.status===2)&&<Button icon={<Delete24Regular/>} onClick={()=>handleDelete(sel!.id)}>删除</Button>}
+            {sel!.status===0&&<Button icon={<Delete24Regular/>} onClick={()=>handleCancel(sel!.id)}>取消</Button>}
+            {(sel!.status===3||sel!.status===4)&&<><Button icon={<ArrowDownload24Regular/>} onClick={()=>handleExport(sel!.id)}>CSV</Button><Button icon={<ArrowDownload24Regular/>} onClick={()=>handleExportGeoJSON(sel!.id)}>GeoJSON</Button></>}
+            {sel!.status===4&&<Button icon={<Play24Regular/>} onClick={()=>handleRetry(sel!.id)}>重试</Button>}
+            {(sel!.status===3||sel!.status===4||sel!.status===5)&&<Button icon={<Delete24Regular/>} onClick={()=>handleDelete(sel!.id)}>删除</Button>}
+        </div>
+    );
+
+    const renderDetailContent=()=>{
+        if(detailView==='log')return(
             <div style={css.logBody}>
                 {logs.length===0&&<Text style={{color:tokens.colorNeutralForeground3}}>暂无日志</Text>}
                 {logs.map((l,i)=>(
@@ -218,11 +256,47 @@ function App(){
                 ))}
                 <div ref={logEnd}/>
             </div>
+        );
+        if(records.length===0)return(
+            <Text style={{color:tokens.colorNeutralForeground3,marginTop:'16px',display:'block'}}>
+                {sel!.status===1?'采集中，暂无数据…':'暂无采集数据'}
+            </Text>
+        );
+        if(detailView==='preview'){
+            return(
+                <div style={css.mapBody}>
+                    <PoiMap records={records} active={detailView==='preview'}/>
+                </div>
+            );
+        }
+        return(
+            <div style={css.tableBody}>
+                <PoiTable records={records} columns={tableColumns} fieldLabels={fieldLabels} limit={TABLE_LIMIT}/>
+            </div>
+        );
+    };
+
+    const mainView=sel?(
+        <div style={css.detailPanel}>
+            <div style={css.detailHeader}>
+                <TabList size="small" selectedValue={detailView} onTabSelect={(_e,d)=>setDetailView(d.value as DetailView)}>
+                    <Tab value="preview" icon={<Eye24Regular/>}>预览</Tab>
+                    <Tab value="table" icon={<Table24Regular/>}>表格</Tab>
+                    <Tab value="log" icon={<DocumentText24Regular/>}>日志</Tab>
+                </TabList>
+                {renderTaskActions()}
+            </div>
+            <div style={{
+                ...css.detailBody,
+                ...(detailView==='preview'?{padding:0,overflow:'hidden',display:'flex',flexDirection:'column'}:{}),
+                ...(detailView==='table'?{padding:'0 20px 20px',overflow:'hidden',display:'flex',flexDirection:'column'}:{}),
+                ...(detailView==='log'?{paddingTop:0}:{}),
+            }}>{renderDetailContent()}</div>
         </div>
     ):(
         <div style={css.empty}>
             <Text size={500} style={{fontWeight:'200',color:tokens.colorNeutralForeground3}}>PoiFlow</Text>
-            <Text>选择一个任务查看日志，或创建新任务</Text>
+            <Text>选择一个任务查看详情，或创建新任务</Text>
         </div>
     );
 

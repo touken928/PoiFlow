@@ -115,6 +115,14 @@ func (a *App) PauseTask(id string) bool   { return a.taskQ.Pause(id) }
 func (a *App) ResumeTask(id string) bool  { return a.taskQ.Resume(id) }
 func (a *App) GetTaskLogs(id string) []task.LogEntry { return a.taskQ.GetLogs(id) }
 
+func (a *App) GetTaskRecords(id string) []task.Record {
+	r := a.taskQ.Records(id)
+	if r == nil {
+		return []task.Record{}
+	}
+	return r
+}
+
 func (a *App) ExpandCount(areaGran, queryGran int, targets []TaskTargetInput) int {
 	ts := make([]task.Target, len(targets))
 	for i, t := range targets {

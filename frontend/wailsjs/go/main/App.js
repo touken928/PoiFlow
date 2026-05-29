@@ -58,6 +58,10 @@ export function GetTaskLogs(arg1) {
   return window['go']['main']['App']['GetTaskLogs'](arg1);
 }
 
+export function GetTaskRecords(arg1) {
+  return window['go']['main']['App']['GetTaskRecords'](arg1);
+}
+
 export function GetTasks() {
   return window['go']['main']['App']['GetTasks']();
 }

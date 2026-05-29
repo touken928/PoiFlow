@@ -32,6 +32,8 @@ export function GetProvinces():Promise<Array<string>>;
 
 export function GetTaskLogs(arg1:string):Promise<Array<task.LogEntry>>;
 
+export function GetTaskRecords(arg1:string):Promise<Array<task.Record>>;
+
 export function GetTasks():Promise<Array<task.Task>>;
 
 export function GetVersion():Promise<string>;

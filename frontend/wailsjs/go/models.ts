@@ -88,6 +88,42 @@ export namespace task {
 	        this.level = source["level"];
 	    }
 	}
+	export class Record {
+	    name: string;
+	    lng: number;
+	    lat: number;
+	    address: string;
+	    telephone: string;
+	    province: string;
+	    city: string;
+	    area: string;
+	    uid: string;
+	    query: string;
+	    type: string;
+	    taskName: string;
+	    target: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Record(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.lng = source["lng"];
+	        this.lat = source["lat"];
+	        this.address = source["address"];
+	        this.telephone = source["telephone"];
+	        this.province = source["province"];
+	        this.city = source["city"];
+	        this.area = source["area"];
+	        this.uid = source["uid"];
+	        this.query = source["query"];
+	        this.type = source["type"];
+	        this.taskName = source["taskName"];
+	        this.target = source["target"];
+	    }
+	}
 	export class SearchTerm {
 	    query: string;
 	    type: string;
