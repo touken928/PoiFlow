@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -102,15 +103,23 @@ func (e *Executor) SearchTarget(query, poiType, region, taskID string) ([]baidu.
 func minInt(a, b int) int { if a < b { return a }; return b }
 
 type Queue struct {
-	mu       sync.Mutex
-	tasks    []*Task
-	running  bool
-	executor *Executor
-	onEvent  EventHandler
-	records  map[string][]Record
-	logs     map[string][]LogEntry
-	cacheDir string
+	mu        sync.Mutex
+	tasks     []*Task
+	running   bool
+	executor  *Executor
+	onEvent   EventHandler
+	records   map[string][]Record
+	logs      map[string][]LogEntry
+	cacheDir  string
 	statePath string
+	fileMu    sync.Mutex
+}
+
+type searchJob struct {
+	opIndex int
+	target  Target
+	term    SearchTerm
+	region  string
 }
 
 func NewQueue(executor *Executor, onEvent EventHandler, cacheDir, statePath string) *Queue {
@@ -201,6 +210,7 @@ func (q *Queue) Retry(id string) bool {
 			t.Status = StatusPending
 			t.Error = ""
 			t.CompletedTargets = 0
+			t.CompletedOps = 0
 			t.UpdatedAt = time.Now()
 			q.emit("task:updated", t); q.saveStateUnsafe()
 			if !q.running { q.running = true; go q.processLoop() }
@@ -271,9 +281,23 @@ func (q *Queue) processLoop() {
 	}
 }
 
+func (q *Queue) taskPaused(t *Task) bool {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	return t.Status == StatusPaused
+}
+
+func targetRegion(t Target) string {
+	if t.City != "" {
+		return t.City + t.Name
+	}
+	return t.Name
+}
+
 func (q *Queue) execute(t *Task) {
 	q.mu.Lock()
-	t.Status = StatusRunning; t.UpdatedAt = time.Now()
+	t.Status = StatusRunning
+	t.UpdatedAt = time.Now()
 	q.mu.Unlock()
 	q.addLog(t.ID, "info", "任务开始执行")
 	q.emit("task:updated", t)
@@ -282,98 +306,174 @@ func (q *Queue) execute(t *Task) {
 	searchTargets := expandTargets(t.Targets, t.AreaGranularity, t.QueryGranularity)
 	knownUIDs := make(map[string]bool)
 	for _, p := range []string{t.ExportPath, q.cachePath(t.ID)} {
-		if p == "" { continue }
-		if loaded, _ := LoadExistingUIDs(p); len(loaded) > 0 {
-			for k := range loaded { knownUIDs[k] = true }
+		if p == "" {
+			continue
 		}
-	}
-	var allRecords []Record
-	total := len(searchTargets)
-	startFrom := t.CompletedTargets
-	if startFrom > 0 {
-		q.addLog(t.ID, "info", fmt.Sprintf("从第 %d/%d 个目标继续", startFrom+1, total))
+		if loaded, _ := LoadExistingUIDs(p); len(loaded) > 0 {
+			for k := range loaded {
+				knownUIDs[k] = true
+			}
+		}
 	}
 
 	queryCount := len(t.Queries)
-	if queryCount < 1 { queryCount = 1 }
-	opTotal := total * queryCount
-	opIndex := 0
+	if queryCount < 1 {
+		queryCount = 1
+	}
+	opTotal := len(searchTargets) * queryCount
 
-	if startFrom > 0 { opIndex = startFrom * queryCount }
-
-	targetRegion := func(t Target) string {
-		if t.City != "" { return t.City + t.Name }
-		return t.Name
+	startOps := t.CompletedOps
+	if startOps == 0 && t.CompletedTargets > 0 {
+		startOps = t.CompletedTargets * queryCount
+	}
+	if startOps > 0 {
+		q.addLog(t.ID, "info", fmt.Sprintf("从第 %d/%d 次查询继续", startOps+1, opTotal))
 	}
 
-	for i, target := range searchTargets {
-		if i < startFrom { continue }
-		func() {
-			q.mu.Lock()
-			paused := t.Status == StatusPaused
-			q.mu.Unlock()
-			if paused { q.addLog(t.ID, "warn", "任务已暂停"); return }
-		}()
-		if t.Status == StatusPaused { break }
-
-		for qi, term := range t.Queries {
+	var jobs []searchJob
+	opIndex := 0
+	for _, target := range searchTargets {
+		for _, term := range t.Queries {
 			opIndex++
-			q.addLog(t.ID, "info", fmt.Sprintf("搜索 [%d/%d] %s | %s", opIndex, opTotal, target.Name, termStr(term)))
+			if opIndex <= startOps {
+				continue
+			}
+			jobs = append(jobs, searchJob{
+				opIndex: opIndex,
+				target:  target,
+				term:    term,
+				region:  targetRegion(target),
+			})
+		}
+	}
 
-			results, err := q.executor.SearchTarget(term.Query, term.Type, targetRegion(target), t.ID)
-			if err != nil {
-				q.mu.Lock()
-				t.Error = err.Error()
-				if err.Error() == "所有AK均已失效" {
-					t.Status = StatusPaused
-					q.addLogUnsafe(t.ID, "error", "所有AK均已失效，任务已暂停")
-				} else {
-					t.Status = StatusFailed
+	if len(jobs) == 0 {
+		q.finishExecute(t, nil, startOps, opTotal, queryCount, startOps >= opTotal)
+		return
+	}
+
+	workers := q.executor.pool.WorkerCount()
+	if workers > len(jobs) {
+		workers = len(jobs)
+	}
+	if workers < 1 {
+		workers = 1
+	}
+	q.addLog(t.ID, "info", fmt.Sprintf("并发 %d 路查询（%d 个可用 AK，每 AK 约 2 QPS）", workers, q.executor.pool.AliveCount()))
+
+	baseRecordCount := len(knownUIDs)
+	var (
+		stateMu      sync.Mutex
+		allRecords   []Record
+		completedOps int
+		execErr      error
+		stop         int32
+	)
+
+	jobCh := make(chan searchJob, workers)
+	var wg sync.WaitGroup
+	for w := 0; w < workers; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for job := range jobCh {
+				if atomic.LoadInt32(&stop) != 0 || q.taskPaused(t) {
+					return
 				}
+
+				q.addLog(t.ID, "info", fmt.Sprintf("搜索 [%d/%d] %s | %s", job.opIndex, opTotal, job.target.Name, termStr(job.term)))
+
+				results, err := q.executor.SearchTarget(job.term.Query, job.term.Type, job.region, t.ID)
+				if err != nil {
+					stateMu.Lock()
+					if execErr == nil {
+						execErr = err
+						atomic.StoreInt32(&stop, 1)
+						q.mu.Lock()
+						t.Error = err.Error()
+						if err.Error() == "所有AK均已失效" {
+							t.Status = StatusPaused
+							q.addLogUnsafe(t.ID, "error", "所有AK均已失效，任务已暂停")
+						} else {
+							t.Status = StatusFailed
+						}
+						t.UpdatedAt = time.Now()
+						q.mu.Unlock()
+					}
+					stateMu.Unlock()
+					q.addLog(t.ID, "error", fmt.Sprintf("搜索失败 [%d/%d] %s: %s", job.opIndex, opTotal, job.target.Name, err.Error()))
+					continue
+				}
+
+				stateMu.Lock()
+				if atomic.LoadInt32(&stop) != 0 {
+					stateMu.Unlock()
+					return
+				}
+
+				newRecs := make([]Record, 0, len(results))
+				for _, r := range results {
+					rec := Record{
+						Name: r.Name, Lng: r.Location.Lng, Lat: r.Location.Lat,
+						Address: r.Address, Telephone: r.Telephone,
+						Province: r.Province, City: r.City, Area: r.Area,
+						UID: r.UID, Query: job.term.Query, Type: job.term.Type,
+						TaskName: t.Name, Target: job.target.Name,
+					}
+					if knownUIDs[rec.UID] {
+						continue
+					}
+					knownUIDs[rec.UID] = true
+					newRecs = append(newRecs, rec)
+				}
+				allRecords = append(allRecords, newRecs...)
+				completedOps++
+				doneOps := startOps + completedOps
+
+				q.mu.Lock()
+				t.CompletedOps = doneOps
+				t.CompletedTargets = doneOps / queryCount
+				t.Records = baseRecordCount + len(allRecords)
+				t.Progress = itoa(doneOps) + "/" + itoa(opTotal)
 				t.UpdatedAt = time.Now()
 				q.mu.Unlock()
-				q.addLog(t.ID, "error", "搜索失败: "+err.Error())
-				q.emit("task:failed", map[string]interface{}{"task": t, "target": target, "error": err.Error()})
+				stateMu.Unlock()
+
+				q.appendRecords(t, newRecs)
+				q.addLog(t.ID, "info", fmt.Sprintf("完成 [%d/%d] %s | %s，获取 %d 条", job.opIndex, opTotal, job.target.Name, termStr(job.term), len(results)))
 				q.saveState()
-				return
-			}
+				q.emit("task:progress", map[string]interface{}{
+					"task": t, "target": job.target, "records": baseRecordCount + len(allRecords),
+					"total": opTotal, "current": doneOps, "allCount": baseRecordCount + len(allRecords),
+				})
 
-			for _, r := range results {
-				rec := Record{
-					Name: r.Name, Lng: r.Location.Lng, Lat: r.Location.Lat,
-					Address: r.Address, Telephone: r.Telephone,
-					Province: r.Province, City: r.City, Area: r.Area,
-					UID: r.UID, Query: term.Query, Type: term.Type, TaskName: t.Name, Target: target.Name,
+				if q.taskPaused(t) {
+					atomic.StoreInt32(&stop, 1)
+					return
 				}
-				allRecords = append(allRecords, rec)
-				if t.ExportPath != "" { _ = AppendRecord(t.ExportPath, rec, knownUIDs) }
-				_ = AppendRecord(q.cachePath(t.ID), rec, knownUIDs)
-				knownUIDs[r.UID] = true
 			}
+		}()
+	}
 
-			q.addLog(t.ID, "info", fmt.Sprintf("完成 [%d/%d] %s | %s，获取 %d 条", opIndex, opTotal, target.Name, termStr(term), len(results)))
-
-			func() {
-				q.mu.Lock()
-				paused := t.Status == StatusPaused
-				q.mu.Unlock()
-				if qi < len(t.Queries)-1 && paused { q.addLog(t.ID, "warn", "任务已暂停") }
-			}()
-			if t.Status == StatusPaused { break }
+	for _, job := range jobs {
+		if atomic.LoadInt32(&stop) != 0 {
+			break
 		}
-		if t.Status == StatusPaused { break }
+		jobCh <- job
+	}
+	close(jobCh)
+	wg.Wait()
 
-		q.mu.Lock()
-		t.Records = len(allRecords)
-		t.CompletedTargets = i + 1
-		t.Progress = itoa(opIndex) + "/" + itoa(opTotal)
-		t.UpdatedAt = time.Now()
-		q.mu.Unlock()
+	doneOps := startOps + completedOps
+	allDone := doneOps >= opTotal
+	q.finishExecute(t, execErr, doneOps, opTotal, queryCount, allDone)
+}
+
+func (q *Queue) finishExecute(t *Task, execErr error, doneOps, opTotal, queryCount int, allDone bool) {
+	if execErr != nil {
+		q.emit("task:failed", map[string]interface{}{"task": t, "error": execErr.Error()})
 		q.saveState()
-		q.emit("task:progress", map[string]interface{}{
-			"task": t, "target": target, "records": len(allRecords),
-			"total": opTotal, "current": opIndex, "allCount": len(allRecords),
-		})
+		return
 	}
 
 	q.mu.Lock()
@@ -384,15 +484,43 @@ func (q *Queue) execute(t *Task) {
 		q.saveState()
 		return
 	}
+	if !allDone {
+		q.mu.Unlock()
+		q.saveState()
+		return
+	}
+	recordCount := len(q.Records(t.ID))
+	if recordCount == 0 {
+		recordCount = t.Records
+	}
 	t.Status = StatusCompleted
-	t.Records = len(allRecords)
-	t.Progress = itoa(total) + "/" + itoa(total)
+	t.CompletedOps = opTotal
+	t.CompletedTargets = len(expandTargets(t.Targets, t.AreaGranularity, t.QueryGranularity))
+	t.Records = recordCount
+	t.Progress = itoa(opTotal) + "/" + itoa(opTotal)
 	t.UpdatedAt = time.Now()
-	q.records[t.ID] = allRecords
+	records := q.Records(t.ID)
+	q.records[t.ID] = records
 	q.mu.Unlock()
-	q.addLog(t.ID, "info", fmt.Sprintf("任务完成，共 %d 条记录", len(allRecords)))
-	q.emit("task:completed", map[string]interface{}{"task": t, "records": allRecords})
+	q.addLog(t.ID, "info", fmt.Sprintf("任务完成，共 %d 条记录", recordCount))
+	q.emit("task:completed", map[string]interface{}{"task": t, "records": records})
 	q.saveState()
+}
+
+func (q *Queue) appendRecords(t *Task, recs []Record) {
+	if len(recs) == 0 {
+		return
+	}
+	q.fileMu.Lock()
+	defer q.fileMu.Unlock()
+	known := make(map[string]bool)
+	for _, rec := range recs {
+		if t.ExportPath != "" {
+			_ = AppendRecord(t.ExportPath, rec, known)
+		}
+		_ = AppendRecord(q.cachePath(t.ID), rec, known)
+		known[rec.UID] = true
+	}
 }
 
 func (q *Queue) addLog(taskID, level, msg string) {

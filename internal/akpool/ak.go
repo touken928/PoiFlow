@@ -81,28 +81,35 @@ func (p *Pool) Next() string {
 }
 
 func (p *Pool) Throttle(ak string) {
-	p.mu.Lock()
-	for _, item := range p.items {
-		if item.AK == ak {
-			now := time.Now()
-			if !item.lastFill.IsZero() {
-				item.tokens = minFloat(tokenBurst, item.tokens+now.Sub(item.lastFill).Seconds()*tokenRate)
-			} else {
-				item.tokens = tokenBurst
+	for {
+		p.mu.Lock()
+		var item *Item
+		for _, it := range p.items {
+			if it.AK == ak {
+				item = it
+				break
 			}
-			item.lastFill = now
-			if item.tokens >= 1 {
-				item.tokens--
-				p.mu.Unlock()
-				return
-			}
-			need := time.Duration((1-item.tokens)/tokenRate*float64(time.Second))
+		}
+		if item == nil {
 			p.mu.Unlock()
-			time.Sleep(need)
 			return
 		}
+		now := time.Now()
+		if !item.lastFill.IsZero() {
+			item.tokens = minFloat(tokenBurst, item.tokens+now.Sub(item.lastFill).Seconds()*tokenRate)
+		} else {
+			item.tokens = tokenBurst
+		}
+		item.lastFill = now
+		if item.tokens >= 1 {
+			item.tokens--
+			p.mu.Unlock()
+			return
+		}
+		need := time.Duration((1-item.tokens)/tokenRate*float64(time.Second))
+		p.mu.Unlock()
+		time.Sleep(need)
 	}
-	p.mu.Unlock()
 }
 
 func minFloat(a, b float64) float64 { if a < b { return a }; return b }
@@ -157,6 +164,18 @@ func (p *Pool) AliveCount() int {
 	n := 0
 	for _, item := range p.items {
 		if !item.Failed && item.Used < item.Limit { n++ }
+	}
+	return n
+}
+
+// WorkerCount returns suggested parallel workers for one task (one per alive AK).
+func (p *Pool) WorkerCount() int {
+	n := p.AliveCount()
+	if n < 1 {
+		if len(p.items) > 0 {
+			return 1
+		}
+		return 0
 	}
 	return n
 }

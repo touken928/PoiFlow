@@ -111,6 +111,22 @@ func TestItems(t *testing.T) {
 	}
 }
 
+func TestWorkerCount(t *testing.T) {
+	p := New([]string{"ak1", "ak2", "ak3"}, nil)
+	if p.WorkerCount() != 3 {
+		t.Errorf("expected 3 workers, got %d", p.WorkerCount())
+	}
+	p.MarkFailed("ak2", "err")
+	if p.WorkerCount() != 2 {
+		t.Errorf("expected 2 workers, got %d", p.WorkerCount())
+	}
+	p.MarkFailed("ak1", "err")
+	p.MarkFailed("ak3", "err")
+	if p.WorkerCount() != 1 {
+		t.Errorf("expected 1 worker fallback, got %d", p.WorkerCount())
+	}
+}
+
 func itoa(n int) string {
 	if n == 0 {
 		return "0"

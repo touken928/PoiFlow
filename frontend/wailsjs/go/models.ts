@@ -166,6 +166,7 @@ export namespace task {
 	    progress: string;
 	    records: number;
 	    completedTargets: number;
+	    completedOps: number;
 	    error: string;
 	    // Go type: time
 	    createdAt: any;
@@ -189,6 +190,7 @@ export namespace task {
 	        this.progress = source["progress"];
 	        this.records = source["records"];
 	        this.completedTargets = source["completedTargets"];
+	        this.completedOps = source["completedOps"];
 	        this.error = source["error"];
 	        this.createdAt = this.convertValues(source["createdAt"], null);
 	        this.updatedAt = this.convertValues(source["updatedAt"], null);
