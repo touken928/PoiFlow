@@ -19,6 +19,7 @@ import {
 import {EventsOn, WindowSetTitle} from '../wailsjs/runtime/runtime';
 import {PoiMap} from './PoiMap';
 import {PoiTable} from './PoiTable';
+import {notifyTaskCompleted, notifyTaskFailed, notifyTaskPaused} from './taskNotify';
 
 const APP_TITLE = 'PoiFlow';
 const STATUS_LABELS = ['等待中','执行中','已暂停','已完成','失败','已取消'];
@@ -111,6 +112,25 @@ function App(){
     const loadRecords=useCallback(async(id:string)=>{try{setRecords((await GetTaskRecords(id))||[]);}catch{setRecords([]);}},[]);
 
     useEffect(()=>{GetProvinces().then(setProvinces).catch(()=>{});GetVersion().then(setAppVersion).catch(()=>{});loadAll();const c=[EventsOn('task:added',loadAll),EventsOn('task:updated',loadAll),EventsOn('task:completed',loadAll),EventsOn('task:failed',loadAll),EventsOn('task:deleted',loadAll)];return()=>{c.forEach(f=>f());};},[loadAll]);
+
+    useEffect(()=>{
+        const offDone=EventsOn('task:completed',(data:any)=>{
+            const task=data?.task;
+            if(!task?.id)return;
+            const count=Array.isArray(data?.records)?data.records.length:(task.records??0);
+            notifyTaskCompleted({id:task.id,name:task.name},count);
+        });
+        const offFail=EventsOn('task:failed',(data:any)=>{
+            const task=data?.task;
+            if(!task?.id)return;
+            if(data?.error==='所有AK均已失效'){
+                notifyTaskPaused({id:task.id,name:task.name},'所有 AK 均已失效，请检查 API Key');
+            }else{
+                notifyTaskFailed({id:task.id,name:task.name},data?.error);
+            }
+        });
+        return()=>{offDone();offFail();};
+    },[]);
 
     useEffect(()=>{if(sel){const u=tasks.find(t=>t.id===sel.id);if(u)setSel(u);}},[tasks]);
 
