@@ -74,6 +74,7 @@ function App(){
     const [logs,setLogs]=useState<LogEntry[]>([]);
     const [records,setRecords]=useState<PoiRecord[]>([]);
     const [detailView,setDetailView]=useState<DetailView>('preview');
+    const [mapHighlightUid,setMapHighlightUid]=useState<string|null>(null);
     const [msg,setMsg]=useState('');
     const [openNew,setOpenNew]=useState(false);
     const [openAk,setOpenAk]=useState(false);
@@ -115,6 +116,7 @@ function App(){
 
     useEffect(()=>{
         WindowSetTitle(sel?.name ? `${APP_TITLE} - ${sel.name}` : APP_TITLE);
+        setMapHighlightUid(null);
     },[sel?.id, sel?.name]);
 
     useEffect(()=>{
@@ -265,13 +267,20 @@ function App(){
         if(detailView==='preview'){
             return(
                 <div style={css.mapBody}>
-                    <PoiMap records={records} active={detailView==='preview'}/>
+                    <PoiMap records={records} active={detailView==='preview'} highlightUid={mapHighlightUid}/>
                 </div>
             );
         }
         return(
             <div style={css.tableBody}>
-                <PoiTable records={records} columns={tableColumns} fieldLabels={fieldLabels} limit={TABLE_LIMIT}/>
+                <PoiTable
+                    records={records}
+                    columns={tableColumns}
+                    fieldLabels={fieldLabels}
+                    limit={TABLE_LIMIT}
+                    highlightUid={mapHighlightUid}
+                    onLocate={(r)=>{setMapHighlightUid(r.uid||`${r.lng},${r.lat}`);setDetailView('preview');}}
+                />
             </div>
         );
     };
